@@ -1,0 +1,1333 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Leaflet styles */
+@import 'leaflet/dist/leaflet.css';
+
+/* Custom map styles */
+.custom-node-icon {
+  background: none !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.custom-node-icon div {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.observation-marker {
+  background: none !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure Leaflet markers have no default offsets */
+.leaflet-marker-icon {
+  margin: 0 !important;
+}
+
+/* Enhanced observation popup styles */
+.observation-popup .leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.observation-popup .leaflet-popup-content {
+  margin: 0;
+  max-height: 400px;
+  overflow-y: auto;
+  min-width: 300px;
+}
+
+.observation-popup .leaflet-popup-tip {
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Marker hover effect */
+.observation-marker-enhanced {
+  transition: transform 0.2s;
+  z-index: 100 !important;
+}
+
+.observation-marker-enhanced:hover {
+  z-index: 1000 !important;
+}
+
+/* Ensure observation markers appear above regular markers */
+.leaflet-marker-icon.observation-marker-enhanced {
+  z-index: 600 !important;
+}
+
+/* Popup animations */
+.leaflet-popup {
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling for popup content */
+.observation-popup .leaflet-popup-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.observation-popup .leaflet-popup-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.observation-popup .leaflet-popup-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.observation-popup .leaflet-popup-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Enhanced line labels positioning */
+.leaflet-marker-icon.line-label {
+  background: rgba(255, 255, 255, 0.9) !important;
+  padding: 2px 6px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 🎯 DRAWING TOOLS VISIBILITY FIXES */
+
+/* Drawing selected state */
+.drawing-selected {
+  filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.6));
+  z-index: 800 !important;
+}
+
+/* 🔥 CRITICAL FIX: Temporary drawings visibility */
+.temp-drawing {
+  opacity: 0.9 !important;
+  z-index: 900 !important;
+  animation: drawingPulse 1.5s ease-in-out infinite;
+  stroke-width: 3 !important;
+  stroke: #ff6b35 !important;
+  fill: rgba(255, 107, 53, 0.3) !important;
+}
+
+/* Make sure temp drawings appear above everything */
+.leaflet-overlay-pane .temp-drawing {
+  z-index: 900 !important;
+}
+
+/* Specific overrides for different drawing types */
+.leaflet-interactive.temp-drawing {
+  z-index: 900 !important;
+  stroke: #ff6b35 !important;
+  stroke-width: 3 !important;
+  fill: rgba(255, 107, 53, 0.3) !important;
+  opacity: 0.9 !important;
+}
+
+.leaflet-overlay-pane svg .temp-drawing {
+  z-index: 900 !important;
+  stroke: #ff6b35 !important;
+  stroke-width: 3 !important;
+  fill: rgba(255, 107, 53, 0.3) !important;
+  opacity: 0.9 !important;
+}
+
+/* Text drawing marker */
+.text-drawing-marker {
+  z-index: 1000 !important;
+}
+
+.temp-text-marker {
+  z-index: 1000 !important;
+}
+
+.temp-text-marker div {
+  background: #ff6b35 !important;
+  color: white !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-weight: bold !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  animation: drawingPulse 1.5s ease-in-out infinite;
+}
+
+/* Enhanced pulse animation for visibility */
+@keyframes drawingPulse {
+  0%, 100% { 
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* Regular pulse for other elements */
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* 🎯 DRAWING MODE CURSOR FIXES */
+
+/* Force crosshairs cursor in drawing mode */
+.leaflet-container.drawing-mode-active {
+  cursor: crosshair !important;
+}
+
+.leaflet-container.drawing-mode-active,
+.leaflet-container.drawing-mode-active * {
+  cursor: crosshair !important;
+}
+
+/* Override ALL Leaflet cursors when in drawing mode */
+.leaflet-container.drawing-mode-active .leaflet-zoom-box,
+.leaflet-container.drawing-mode-active .leaflet-interactive,
+.leaflet-container.drawing-mode-active .leaflet-clickable,
+.leaflet-container.drawing-mode-active .leaflet-marker-icon,
+.leaflet-container.drawing-mode-active .leaflet-marker-shadow,
+.leaflet-container.drawing-mode-active .leaflet-tile,
+.leaflet-container.drawing-mode-active .leaflet-tile-container,
+.leaflet-container.drawing-mode-active .leaflet-pane,
+.leaflet-container.drawing-mode-active .leaflet-layer {
+  cursor: crosshair !important;
+}
+
+/* Disable pointer events that would interfere with drawing */
+.leaflet-container.drawing-mode-active .leaflet-control-zoom,
+.leaflet-container.drawing-mode-active .leaflet-control-attribution {
+  pointer-events: auto;
+  cursor: pointer !important;
+}
+
+/* Map mode specific cursors */
+.leaflet-container.map-mode-view {
+  cursor: grab;
+}
+
+.leaflet-container.map-mode-view:active {
+  cursor: grabbing;
+}
+
+.leaflet-container.map-mode-add-node {
+  cursor: crosshair !important;
+}
+
+.leaflet-container.map-mode-add-node,
+.leaflet-container.map-mode-add-node * {
+  cursor: crosshair !important;
+}
+
+.leaflet-container.map-mode-draw-line {
+  cursor: pointer;
+}
+
+.leaflet-container.map-mode-drawing {
+  cursor: crosshair !important;
+}
+
+.leaflet-container.map-mode-drawing,
+.leaflet-container.map-mode-drawing * {
+  cursor: crosshair !important;
+}
+
+/* Ensure crosshair appears over all elements in drawing mode */
+.leaflet-container.map-mode-drawing *,
+.leaflet-container.map-mode-add-node *,
+.leaflet-container.drawing-mode-active * {
+  cursor: crosshair !important;
+}
+
+/* Drawing mode visual feedback */
+.map-drawing-active {
+  position: relative;
+}
+
+.map-drawing-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* 🎯 CRITICAL: Drawing mode interaction overrides */
+.leaflet-container.drawing-mode-active .leaflet-draggable {
+  pointer-events: none !important;
+}
+
+.leaflet-container.drawing-mode-active .leaflet-zoom-animated {
+  pointer-events: none !important;
+}
+
+/* Keep map tiles interactive for drawing */
+.leaflet-container.drawing-mode-active .leaflet-tile-pane {
+  pointer-events: auto;
+}
+
+/* Visual indicator that drawing mode is active */
+.leaflet-container.drawing-mode-active {
+  border: 2px solid #3b82f6;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1);
+}
+
+/* 🔥 CRITICAL: Force drawing elements to appear above map tiles */
+.leaflet-overlay-pane {
+  z-index: 400 !important;
+}
+
+.leaflet-overlay-pane svg {
+  z-index: 400 !important;
+}
+
+.leaflet-overlay-pane .leaflet-interactive {
+  z-index: 400 !important;
+}
+
+/* Ensure temp drawings are visible above tiles */
+.leaflet-overlay-pane .temp-drawing,
+.leaflet-overlay-pane svg .temp-drawing,
+.leaflet-overlay-pane svg path.temp-drawing {
+  z-index: 900 !important;
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: rgba(255, 107, 53, 0.4) !important;
+  opacity: 1 !important;
+  stroke-dasharray: 5,5 !important;
+  animation: drawingPulse 1.5s ease-in-out infinite;
+}
+
+/* Specific SVG path styling for drawings */
+.leaflet-overlay-pane svg path {
+  pointer-events: auto;
+}
+
+.leaflet-overlay-pane svg path.temp-drawing {
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: rgba(255, 107, 53, 0.4) !important;
+  stroke-dasharray: 5,5 !important;
+  animation: drawingPulse 1.5s ease-in-out infinite;
+}
+
+/* Rectangle specific styles */
+.leaflet-overlay-pane svg rect.temp-drawing {
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: rgba(255, 107, 53, 0.4) !important;
+  stroke-dasharray: 5,5 !important;
+}
+
+/* Circle specific styles */
+.leaflet-overlay-pane svg circle.temp-drawing {
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: rgba(255, 107, 53, 0.4) !important;
+  stroke-dasharray: 5,5 !important;
+}
+
+/* Polyline specific styles */
+.leaflet-overlay-pane svg polyline.temp-drawing {
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: none !important;
+  stroke-dasharray: 5,5 !important;
+}
+
+/* Add this to your globals.css - targeting z-index 300+ to be above nodes at 259 */
+
+/* 🎯 DRAWING Z-INDEX FIXES - Force above everything at 259+ */
+
+/* Force overlay pane above nodes (259) */
+.leaflet-overlay-pane {
+  z-index: 350 !important;
+}
+
+/* Force all drawings to appear above nodes */
+.leaflet-overlay-pane svg {
+  z-index: 350 !important;
+}
+
+.leaflet-overlay-pane .leaflet-interactive {
+  z-index: 350 !important;
+}
+
+/* Specific temp drawing elements */
+.temp-drawing,
+.leaflet-interactive.temp-drawing {
+  z-index: 400 !important;
+  position: relative !important;
+}
+
+/* SVG path elements for drawings */
+.leaflet-overlay-pane svg path {
+  z-index: 400 !important;
+}
+
+.leaflet-overlay-pane svg path.temp-drawing {
+  z-index: 450 !important;
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: rgba(255, 107, 53, 0.4) !important;
+  stroke-dasharray: 5,5 !important;
+  opacity: 1 !important;
+}
+
+/* Rectangle specific */
+.leaflet-overlay-pane svg rect.temp-drawing {
+  z-index: 450 !important;
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: rgba(255, 107, 53, 0.4) !important;
+  stroke-dasharray: 5,5 !important;
+}
+
+/* Circle specific */
+.leaflet-overlay-pane svg circle.temp-drawing {
+  z-index: 450 !important;
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: rgba(255, 107, 53, 0.4) !important;
+  stroke-dasharray: 5,5 !important;
+}
+
+/* Polyline specific */
+.leaflet-overlay-pane svg polyline.temp-drawing {
+  z-index: 450 !important;
+  stroke: #ff6b35 !important;
+  stroke-width: 4 !important;
+  fill: none !important;
+  stroke-dasharray: 5,5 !important;
+}
+
+/* Text markers */
+.temp-text-marker {
+  z-index: 500 !important;
+}
+
+.temp-text-marker div {
+  background: #ff6b35 !important;
+  color: white !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-weight: bold !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  z-index: 500 !important;
+}
+
+/* 🔥 NUCLEAR OPTION: Force any drawing-related element above 259 */
+[class*="drawing"],
+[class*="temp-drawing"],
+.leaflet-interactive[style*="stroke"] {
+  z-index: 400 !important;
+  position: relative !important;
+}
+
+/* Debug: Make drawings highly visible */
+.temp-drawing {
+  opacity: 1 !important;
+  stroke: #ff0000 !important;
+  stroke-width: 6 !important;
+  fill: rgba(255, 0, 0, 0.5) !important;
+  animation: drawingPulse 1s infinite !important;
+}
+
+@keyframes drawingPulse {
+  0%, 100% { 
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+/* 🔥 CRITICAL: Force text modal above everything */
+.drawing-tools-modal {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  pointer-events: auto !important;
+}
+
+.drawing-tools-modal > div {
+  z-index: 2147483647 !important;
+  position: relative !important;
+  pointer-events: auto !important;
+}
+
+.drawing-tools-modal * {
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+}
+
+/* Transform Handles and Selection Styles */
+/* Add this to your app/globals.css file */
+
+/* Transform handle styles */
+.transform-handle {
+  transition: all 0.2s ease;
+  pointer-events: auto !important;
+}
+
+.transform-handle:hover {
+  transform: translate(-50%, -50%) scale(1.2) !important;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+}
+
+.transform-handle-resize {
+  background-color: #ffffff !important;
+  border-color: #3B82F6 !important;
+}
+
+.transform-handle-rotate {
+  background-color: #10B981 !important;
+  border-color: #059669 !important;
+}
+
+/* Map cursor styles for different modes */
+.map-mode-view {
+  cursor: default;
+}
+
+.map-mode-add-node {
+  cursor: crosshair;
+}
+
+.map-mode-draw-line {
+  cursor: crosshair;
+}
+
+.map-mode-drawing {
+  cursor: crosshair;
+}
+
+.map-drawing-active {
+  cursor: crosshair !important;
+}
+
+.map-multi-select-active {
+  cursor: pointer;
+}
+
+/* Leaflet crosshair cursor override */
+.leaflet-crosshair-cursor,
+.leaflet-crosshair-cursor .leaflet-interactive {
+  cursor: crosshair !important;
+}
+
+/* Drawing selection styles */
+.drawing-selected {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
+  stroke-width: 4 !important;
+  stroke-dasharray: 8,4 !important;
+  animation: selection-pulse 2s infinite;
+}
+
+.drawing-multi-selected {
+  filter: drop-shadow(0 0 8px rgba(147, 51, 234, 0.6));
+  stroke-width: 3 !important;
+  stroke-dasharray: 6,3 !important;
+}
+
+/* Selection pulse animation */
+@keyframes selection-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.9));
+  }
+}
+
+/* Temporary drawing preview styles */
+.temp-drawing-preview {
+  stroke-dasharray: 4,4 !important;
+  opacity: 0.7 !important;
+  animation: drawing-preview 1s infinite;
+}
+
+@keyframes drawing-preview {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 8; }
+}
+
+/* Text marker styles */
+.temp-text-marker {
+  z-index: 1000 !important;
+}
+
+/* Transform operation feedback */
+.transform-active {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* Selection outline styles */
+.selection-outline {
+  stroke: #3B82F6 !important;
+  stroke-width: 2 !important;
+  stroke-dasharray: 4,4 !important;
+  fill: none !important;
+  opacity: 0.8 !important;
+  pointer-events: none !important;
+}
+
+/* Multi-select area styles */
+.multi-select-area {
+  fill: rgba(147, 51, 234, 0.1) !important;
+  stroke: rgba(147, 51, 234, 0.5) !important;
+  stroke-width: 2 !important;
+  stroke-dasharray: 4,2 !important;
+}
+
+/* Drawing hover effects */
+.drawing-hover {
+  filter: brightness(1.1);
+  cursor: pointer;
+}
+
+/* Transform handle positioning */
+.leaflet-marker-icon.transform-handle {
+  border-radius: 2px;
+  border: 2px solid #3B82F6;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.leaflet-marker-icon.transform-handle-rotate {
+  border-radius: 50%;
+  border: 2px solid #059669;
+  background-color: #10B981;
+}
+
+/* Disable text selection during transforms */
+.map-drawing-active,
+.map-multi-select-active {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Transform feedback styles */
+.transform-feedback {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Drawing tools panel enhancements */
+.drawing-tools {
+  position: relative;
+}
+
+.drawing-tools-active {
+  border-left: 4px solid #3B82F6;
+}
+
+/* Selection status styles */
+.selection-status {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.multi-select-status {
+  background: linear-gradient(90deg, rgba(147, 51, 234, 0.1), rgba(219, 39, 119, 0.1));
+  border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .transform-handle {
+    width: 12px !important;
+    height: 12px !important;
+  }
+  
+  .transform-feedback {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .transform-handle {
+    border-width: 3px !important;
+  }
+  
+  .drawing-selected {
+    stroke-width: 6 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .transform-handle,
+  .drawing-selected,
+  .temp-drawing-preview {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* Map Transform and Selection Styles */
+
+/* Transform handles container */
+.transform-handle-container {
+  background: transparent !important;
+  border: none !important;
+  z-index: 1000 !important;
+}
+
+/* Transform handle styling */
+.transform-handle-container > div {
+  transition: none !important;
+  transform-origin: center !important;
+  pointer-events: all !important;
+  cursor: inherit !important;
+}
+
+/* Hover effect for handles */
+.transform-handle-container:hover > div {
+  transform: translate(-50%, -50%) scale(1.2) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+}
+
+/* Selection outline */
+.selection-outline {
+  pointer-events: none !important;
+  animation: dash-animation 0.5s linear infinite;
+}
+
+@keyframes dash-animation {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+/* Drawing selection states */
+.drawing-selected {
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
+}
+
+.drawing-multi-selected {
+  filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.5));
+}
+
+/* Cursor styles for different modes */
+.map-mode-drawing {
+  cursor: crosshair !important;
+}
+
+.map-mode-drawing.has-selected-drawing {
+  cursor: default !important;
+}
+
+.map-drawing-active {
+  cursor: crosshair !important;
+}
+
+.leaflet-crosshair-cursor {
+  cursor: crosshair !important;
+}
+
+/* Prevent map drag during transform */
+.leaflet-container.transforming {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Text drawing styles */
+.text-drawing-marker {
+  transition: all 0.2s ease;
+}
+
+.text-selected > div {
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5) !important;
+}
+
+/* Hover effects for drawings */
+.drawing-hover:hover {
+  filter: brightness(1.1);
+  cursor: pointer;
+}
+
+/* Multi-select mode indicator */
+.map-multi-select-active {
+  position: relative;
+}
+
+.map-multi-select-active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Drawing tools modal z-index fix */
+.drawing-tools-modal {
+  z-index: 2147483647 !important;
+}
+
+/* Temporary drawing preview */
+.temp-drawing-preview {
+  opacity: 0.6;
+  stroke-dasharray: 4, 4;
+}
+
+/* Transform mode visual feedback */
+.map-mode-drawing .leaflet-interactive:not(.transform-handle-container) {
+  cursor: pointer;
+}
+
+.map-mode-drawing.has-selected-drawing .leaflet-interactive:not(.transform-handle-container) {
+  cursor: default;
+}
+
+/* Fix for popup positioning during transform */
+.leaflet-popup {
+  z-index: 700 !important;
+}
+
+/* Ensure transform handles stay on top */
+.transform-handle-resize-nw,
+.transform-handle-resize-ne,
+.transform-handle-resize-se,
+.transform-handle-resize-sw,
+.transform-handle-resize-n,
+.transform-handle-resize-e,
+.transform-handle-resize-s,
+.transform-handle-resize-w,
+.transform-handle-move-center {
+  z-index: 1001 !important;
+}
+
+/* Handle specific cursor styles */
+.transform-handle-resize-nw { cursor: nw-resize !important; }
+.transform-handle-resize-ne { cursor: ne-resize !important; }
+.transform-handle-resize-se { cursor: se-resize !important; }
+.transform-handle-resize-sw { cursor: sw-resize !important; }
+.transform-handle-resize-n { cursor: n-resize !important; }
+.transform-handle-resize-e { cursor: e-resize !important; }
+.transform-handle-resize-s { cursor: s-resize !important; }
+.transform-handle-resize-w { cursor: w-resize !important; }
+.transform-handle-move-center { cursor: move !important; }
+
+/* Smooth Dragging Styles - Add to your globals.css */
+
+/* Disable all transitions during drag for smooth movement */
+.leaflet-container.leaflet-dragging * {
+  transition: none !important;
+}
+
+/* Optimize rendering performance */
+.leaflet-dragging .leaflet-interactive {
+  will-change: transform;
+}
+
+/* Smooth cursor transitions */
+.leaflet-interactive {
+  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+}
+
+/* Disable pointer events on other elements during drag */
+.leaflet-dragging .leaflet-marker-pane > *:not(.leaflet-marker-draggable),
+.leaflet-dragging .leaflet-overlay-pane > *:not(.dragging) {
+  pointer-events: none !important;
+}
+
+/* GPU acceleration for paths */
+.leaflet-overlay-pane svg path {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Smooth hover effects */
+.leaflet-interactive:hover {
+  transition: opacity 0.1s ease;
+}
+
+/* Dragging state */
+.leaflet-drag-target {
+  opacity: 0.7 !important;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+/* Disable text selection during drag */
+.leaflet-dragging {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Optimize SVG rendering */
+.leaflet-pane svg {
+  shape-rendering: geometricPrecision;
+}
+
+/* Smooth rendering for high DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .leaflet-container {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* Ensure drag indicator is always on top */
+.drag-indicator {
+  z-index: 9999 !important;
+}
+
+/* Make dragging shapes semi-transparent */
+.leaflet-interactive[style*="opacity: 0.2"] {
+  transition: none !important;
+}
+
+/* Visual feedback for draggable shapes in transform mode */
+.map-mode-drawing .leaflet-interactive {
+  transition: opacity 0.2s ease;
+}
+
+.map-mode-drawing .leaflet-interactive:hover {
+  opacity: 0.8 !important;
+}
+
+/* Add this to your app/globals.css file */
+
+/* Transform Handle Styles */
+.transform-handle {
+  z-index: 1000 !important;
+  transition: transform 0.1s ease;
+}
+
+.transform-handle:hover {
+  transform: scale(1.2);
+}
+
+/* Handle-specific cursor styles */
+.handle-top-left {
+  cursor: nw-resize !important;
+}
+
+.handle-top-center {
+  cursor: n-resize !important;
+}
+
+.handle-top-right {
+  cursor: ne-resize !important;
+}
+
+.handle-middle-left {
+  cursor: w-resize !important;
+}
+
+.handle-middle-right {
+  cursor: e-resize !important;
+}
+
+.handle-bottom-left {
+  cursor: sw-resize !important;
+}
+
+.handle-bottom-center {
+  cursor: s-resize !important;
+}
+
+.handle-bottom-right {
+  cursor: se-resize !important;
+}
+
+.handle-rotate {
+  cursor: grab !important;
+}
+
+.handle-rotate:active {
+  cursor: grabbing !important;
+}
+
+/* Ghost preview layer styles */
+.leaflet-interactive.ghost-preview {
+  pointer-events: none !important;
+}
+
+/* Prevent handles from being selected with map objects */
+.transform-handle .leaflet-marker-icon {
+  pointer-events: all !important;
+}
+
+/* Drawing transform states */
+.map-mode-drawing .leaflet-interactive {
+  transition: opacity 0.2s ease;
+}
+
+.map-mode-drawing .leaflet-interactive.transforming {
+  opacity: 0.3;
+}
+
+/* Text drawing transform indicator */
+.text-drawing-marker.text-selected {
+  animation: text-selected-pulse 2s ease-in-out infinite;
+}
+
+@keyframes text-selected-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* Multi-select mode indicator */
+.map-multi-select-active .leaflet-interactive {
+  cursor: pointer !important;
+}
+
+.map-multi-select-active .leaflet-interactive:hover {
+  filter: brightness(1.1);
+}
+
+/* Transform mode status bar */
+.transform-status-bar {
+  background: linear-gradient(to right, #10B981, #3B82F6);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Smooth transform animations for preview updates */
+.leaflet-zoom-animated .ghost-preview {
+  transition: none !important;
+}
+
+/* Ensure handles stay on top */
+.leaflet-pane.leaflet-marker-pane {
+  z-index: 650;
+}
+
+.transform-handle.leaflet-marker-icon {
+  z-index: 9999 !important;
+}
+
+/* Override any conflicting Leaflet styles */
+.leaflet-container .transform-handle {
+  background: none !important;
+  border: none !important;
+}
+
+/* Add this to your app/globals.css file */
+
+/* Transform Handle Styles for CircleMarkers */
+.transform-handle {
+  z-index: 9999 !important;
+  pointer-events: all !important;
+}
+
+/* CircleMarker handle styles */
+.leaflet-interactive.transform-handle {
+  cursor: pointer !important;
+  pointer-events: all !important;
+}
+
+/* Handle hover effects are handled in JavaScript */
+
+/* Rotate handle line */
+.rotate-handle-line {
+  pointer-events: none !important;
+}
+
+/* Ghost preview layer styles */
+.leaflet-interactive.ghost-preview {
+  pointer-events: none !important;
+}
+
+/* Drawing transform states */
+.map-mode-drawing .leaflet-interactive {
+  transition: opacity 0.2s ease;
+}
+
+.map-mode-drawing .leaflet-interactive.transforming {
+  opacity: 0.3;
+}
+
+/* Text drawing transform indicator */
+.text-drawing-marker.text-selected {
+  animation: text-selected-pulse 2s ease-in-out infinite;
+}
+
+@keyframes text-selected-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* Multi-select mode indicator */
+.map-multi-select-active .leaflet-interactive {
+  cursor: pointer !important;
+}
+
+.map-multi-select-active .leaflet-interactive:hover {
+  filter: brightness(1.1);
+}
+
+/* Transform mode status bar */
+.transform-status-bar {
+  background: linear-gradient(to right, #10B981, #3B82F6);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Smooth transform animations for preview updates */
+.leaflet-zoom-animated .ghost-preview {
+  transition: none !important;
+}
+
+/* Override any conflicting Leaflet styles */
+.leaflet-container .transform-handle {
+  background: none !important;
+  border: none !important;
+}
+
+/* Debug - make handles more visible */
+.transform-handle > div {
+  min-width: 8px !important;
+  min-height: 8px !important;
+}
+
+/* Ensure handles stay on top */
+.leaflet-pane.leaflet-marker-pane {
+  z-index: 700 !important;
+}
+
+/* Make handles more visible and stable */
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-marker-pane {
+  z-index: 800 !important;
+}
+
+/* Prevent handle hover conflicts */
+.transform-handle:hover {
+  z-index: 10000 !important;
+}
+
+.leaflet-image-layer {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+.leaflet-container {
+  background: #f5f5f5;
+}
+/* Add to app/globals.css */
+
+/* Ensure leaflet container has a background for blank canvas mode */
+.leaflet-container {
+  background-color: #f5f5f5;
+}
+
+/* Ensure images display at correct aspect ratio */
+.leaflet-image-layer {
+  image-rendering: auto;
+  object-fit: contain;
+}
+
+/* Remove tile layer fade animation for smoother transitions */
+.leaflet-tile-container {
+  transition: none;
+}
+
+/* Hide attribution for non-map backgrounds */
+.map-mode-drawing .leaflet-control-attribution,
+.map-mode-add-node .leaflet-control-attribution,
+.map-mode-draw-line .leaflet-control-attribution {
+  display: none;
+}
+
+/* Canvas mode tooltip styles */
+.leaflet-tooltip-canvas {
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 0;
+}
+
+.leaflet-tooltip-canvas .leaflet-tooltip-content {
+  margin: 0;
+}
+
+/* Canvas-safe popup styles - when using popups instead of tooltips */
+.leaflet-popup-canvas-safe .leaflet-popup-content-wrapper {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 6px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-canvas-safe .leaflet-popup-content {
+  margin: 8px 12px;
+  line-height: 1.4;
+}
+
+/* Prevent popup tip from showing in canvas mode if needed */
+.map-mode-drawing .leaflet-popup-tip-container {
+  opacity: 0.7;
+}
+
+/* Ensure tooltips are above other elements */
+.leaflet-tooltip-pane {
+  z-index: 650;
+}
+
+/* Optional: Add transition for smooth show/hide */
+.leaflet-tooltip-canvas {
+  transition: opacity 0.2s ease-in-out;
+}
+/* Custom Canvas Popup Styles */
+.leaflet-popup-custom-canvas {
+  pointer-events: none;
+}
+
+.leaflet-popup-custom-canvas > div {
+  pointer-events: auto;
+}
+
+/* Ensure custom popups appear above map elements */
+.leaflet-pane {
+  position: relative;
+}
+
+/* Additional safety to prevent any auto-panning in canvas mode */
+.map-mode-blank .leaflet-popup-pane {
+  pointer-events: none !important;
+}
+
+.map-mode-blank .leaflet-popup {
+  display: none !important;
+}
+
+/* Style for the custom popup arrow */
+.leaflet-popup-custom-canvas .absolute.bottom-0 {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Smooth transitions for custom popups */
+.leaflet-popup-custom-canvas > div {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -95%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+/* Ensure the close button is easily clickable */
+.leaflet-popup-custom-canvas button {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Hide all Leaflet popups in canvas/blank mode as extra safety */
+[class*="map-mode-blank"] .leaflet-popup {
+  display: none !important;
+}
+
+/* Ensure drawing layers don't interfere with popups */
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-popup-pane {
+  z-index: 700;
+}
+
+/* Rotation handle tooltip styling */
+.rotation-handle-icon {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 14px;
+  font-weight: bold;
+  color: #10B981;
+}
+
+/* Rotation feedback popup styling */
+.rotation-feedback {
+  pointer-events: none;
+}
