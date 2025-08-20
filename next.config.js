@@ -105,15 +105,8 @@ const nextConfig = {
     ]
   },
 
-  // Webpack configuration for Canvas and large files
+  // Webpack configuration for large files
   webpack: (config, { isServer }) => {
-    // Handle Canvas module for server-side rendering
-    if (isServer) {
-      config.externals.push({
-        canvas: 'commonjs canvas'
-      })
-    }
-
     // Configure for large files and video processing
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -171,8 +164,8 @@ const nextConfig = {
     NEXT_PUBLIC_RUNPOD_API_KEY: process.env.NEXT_PUBLIC_RUNPOD_API_KEY,
   },
 
-  // Output configuration for Vercel
-  output: 'standalone',
+  // Remove standalone output for Vercel deployment
+  // output: 'standalone', // Commented out for Vercel
 
   // TypeScript configuration (since you have @types/react)
   typescript: {
