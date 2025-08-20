@@ -286,6 +286,26 @@ function HomePageContent() {
 
   return (
     <div>
+      {/* Version Banner for Blue-Green Deployment Testing */}
+      <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-3 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-900">
+                🚀 Version 2.1.0 - Blue-Green Deployment Test
+              </span>
+            </div>
+            <div className="text-xs bg-blue-100 px-2 py-1 rounded-full text-blue-700">
+              {process.env.VERCEL_ENV || 'development'}
+            </div>
+          </div>
+          <div className="text-xs text-blue-600">
+            Deployed: {new Date().toLocaleDateString()}
+          </div>
+        </div>
+      </div>
+
       {/* Header with Company Info */}
       <div className="flex justify-between items-start mb-8">
         <div className="flex-1">
