@@ -4,7 +4,7 @@ const nextConfig = {
   experimental: {
     // Enable server actions (already used in your app)
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'yourdomain.com', '*.vercel.app'],
+      allowedOrigins: ['localhost:3000', 'pipereport.ai', '*.vercel.app'],
       bodySizeLimit: '50mb' // For video uploads
     }
   },
