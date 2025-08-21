@@ -235,6 +235,7 @@ export default function ProjectDetailPage() {
     }
   }
 
+  // FIXED: Enhanced handleDeleteSection function with foreign key constraint handling
   const handleDeleteSection = async (sectionId) => {
     const section = sections.find(s => s.id === sectionId)
     if (!section) return
@@ -261,6 +262,45 @@ export default function ProjectDetailPage() {
     try {
       const deletedSectionNumber = section.section_number
 
+      // STEP 1: Handle video pool assignments FIRST (prevents foreign key constraint error)
+      console.log('Checking for assigned pool videos...')
+      try {
+        // Unassign any videos from the pool that are assigned to this section
+        const { data: assignedVideos, error: poolCheckError } = await supabase
+          .from('video_pool')
+          .select('id, original_filename')
+          .eq('assigned_to_section_id', sectionId)
+
+        if (poolCheckError) {
+          console.warn('Error checking pool assignments:', poolCheckError)
+        } else if (assignedVideos && assignedVideos.length > 0) {
+          console.log(`Found ${assignedVideos.length} pool video(s) assigned to this section. Unassigning...`)
+          
+          // Unassign the videos (set assigned_to_section_id to NULL)
+          const { error: unassignError } = await supabase
+            .from('video_pool')
+            .update({
+              assigned_to_section_id: null,
+              assigned_at: null
+            })
+            .eq('assigned_to_section_id', sectionId)
+
+          if (unassignError) {
+            console.error('Error unassigning pool videos:', unassignError)
+            throw new Error('Failed to unassign pool videos. Please try again.')
+          } else {
+            console.log('Pool videos unassigned successfully')
+          }
+        } else {
+          console.log('No pool videos assigned to this section')
+        }
+      } catch (poolError) {
+        console.error('Pool video handling error:', poolError)
+        // Continue with section deletion even if pool handling fails
+        console.warn('Continuing with section deletion despite pool video error')
+      }
+
+      // STEP 2: Delete the video file from storage (if exists)
       if (hasVideo && section.video_filename) {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
@@ -276,17 +316,25 @@ export default function ProjectDetailPage() {
           const { success, error: deleteError } = await deleteVideo(fullFilePath)
           if (!success) {
             console.warn('Storage delete failed:', deleteError)
+            // Don't throw - continue with section deletion
           }
         }
       }
 
+      // STEP 3: Delete the section from database
+      console.log('Deleting section from database...')
       const { error: deleteError } = await supabase
         .from('sections')
         .delete()
         .eq('id', sectionId)
 
-      if (deleteError) throw deleteError
+      if (deleteError) {
+        console.error('Section deletion error:', deleteError)
+        throw deleteError
+      }
 
+      // STEP 4: Renumber subsequent sections
+      console.log('Renumbering subsequent sections...')
       const { data: sectionsToRenumber, error: fetchError } = await supabase
         .from('sections')
         .select('id, section_number')
@@ -312,17 +360,26 @@ export default function ProjectDetailPage() {
 
           if (updateError) {
             console.error(`Error updating section ${sectionToUpdate.id}:`, updateError)
+            // Don't throw - continue with other sections
           }
         }
       }
 
+      // STEP 5: Update UI state
       removeSection(sectionId)
-
       console.log('Section deleted and renumbered successfully')
 
     } catch (err) {
       console.error('Section delete failed:', err)
-      alert(`Failed to delete section: ${err.message}`)
+      
+      // Enhanced error messages
+      if (err.message?.includes('violates foreign key constraint')) {
+        alert('Failed to delete section: This section has associated data that must be removed first. Please try again.')
+      } else if (err.message?.includes('assigned_to_section_id_fkey')) {
+        alert('Failed to delete section: Video pool assignment conflict. Please try again.')
+      } else {
+        alert(`Failed to delete section: ${err.message}`)
+      }
     } finally {
       setDeletingSectionId(null)
     }

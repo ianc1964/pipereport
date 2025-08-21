@@ -4,15 +4,310 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Edit, Trash2, MapPin, User, Calendar, Video, FileText, Eye, Search, Filter, SortAsc, SortDesc, Building, Settings, Archive } from 'lucide-react'
+import Image from 'next/image'
+import { 
+  Edit, Trash2, MapPin, User, Calendar, Video, FileText, Eye, Search, Filter, 
+  SortAsc, SortDesc, Building, Settings, Archive, CheckCircle, TrendingUp, 
+  Shield, Clock, BarChart3, Users, Zap, FileCheck, Globe, ArrowRight
+} from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function EnhancedHomePage() {
+  const { user, loading: authLoading } = useAuth()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Show loading state while checking auth
+  if (!mounted || authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-lg text-gray-500">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show landing page for non-authenticated users
+  if (!user) {
+    return <LandingPage />
+  }
+
+  // Show projects page for authenticated users
+  return <HomePageContent />
+}
+
+function LandingPage() {
+  const router = useRouter()
+
   return (
-    <ProtectedRoute>
-      <HomePageContent />
-    </ProtectedRoute>
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-orange-50 opacity-70"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
+          <div className="text-center">
+            {/* Logo */}
+            <div className="mb-8 flex justify-center">
+              <Image 
+                src="/pipereport-logo.png" 
+                alt="PipeReport.ai - Automated Pipe Condition Reporting" 
+                width={400} 
+                height={120}
+                priority
+                className="h-auto w-auto max-w-full"
+              />
+            </div>
+
+            {/* Main Headline */}
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Professional CCTV Inspection
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-orange-500 pb-2 leading-relaxed">
+                Reporting Made Simple
+              </span>
+            </h1>
+
+            {/* Subheadline */}
+            <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              Transform your drainage inspection workflow with AI-powered analysis, 
+              automated reporting, and intelligent defect detection.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+              <Link 
+                href="/auth/signup"
+                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform transition hover:scale-105 shadow-lg"
+              >
+                Start Free Trial
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+              <Link 
+                href="/auth/login"
+                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition"
+              >
+                Sign In
+              </Link>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                <span>No credit card required</span>
+              </div>
+              <div className="flex items-center">
+                <Shield className="h-5 w-5 text-blue-500 mr-2" />
+                <span>Enterprise-grade security</span>
+              </div>
+              <div className="flex items-center">
+                <Clock className="h-5 w-5 text-orange-500 mr-2" />
+                <span>Setup in 5 minutes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <div className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Everything You Need for Professional Inspections
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Complete workflow management from video upload to final report delivery
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Feature 1 */}
+            <div className="relative p-8 bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-100 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-center w-14 h-14 bg-blue-100 rounded-lg mb-4">
+                <Video className="h-7 w-7 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Smart Video Processing</h3>
+              <p className="text-gray-600">
+                Upload CCTV inspection videos with automatic format detection and intelligent transcoding. 
+                Handle multiple formats with bulk upload capabilities.
+              </p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="relative p-8 bg-gradient-to-br from-orange-50 to-white rounded-2xl border border-orange-100 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-center w-14 h-14 bg-orange-100 rounded-lg mb-4">
+                <Zap className="h-7 w-7 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">AI-Powered Analysis</h3>
+              <p className="text-gray-600">
+                Leverage advanced AI for automatic defect detection, severity assessment, and 
+                intelligent repair recommendations powered by LLM technology.
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="relative p-8 bg-gradient-to-br from-green-50 to-white rounded-2xl border border-green-100 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-center w-14 h-14 bg-green-100 rounded-lg mb-4">
+                <FileCheck className="h-7 w-7 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Professional Reports</h3>
+              <p className="text-gray-600">
+                Generate comprehensive PDF-ready reports with executive summaries, detailed observations, 
+                and actionable repair recommendations.
+              </p>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="relative p-8 bg-gradient-to-br from-purple-50 to-white rounded-2xl border border-purple-100 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-center w-14 h-14 bg-purple-100 rounded-lg mb-4">
+                <Globe className="h-7 w-7 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Interactive Mapping</h3>
+              <p className="text-gray-600">
+                Create detailed infrastructure maps with nodes, pipes, and observations. 
+                Integrate with Google Maps for accurate geographic visualization.
+              </p>
+            </div>
+
+            {/* Feature 5 */}
+            <div className="relative p-8 bg-gradient-to-br from-indigo-50 to-white rounded-2xl border border-indigo-100 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-center w-14 h-14 bg-indigo-100 rounded-lg mb-4">
+                <Users className="h-7 w-7 text-indigo-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Team Collaboration</h3>
+              <p className="text-gray-600">
+                Multi-user support with role-based access control. Manage teams, share projects, 
+                and collaborate on inspections in real-time.
+              </p>
+            </div>
+
+            {/* Feature 6 */}
+            <div className="relative p-8 bg-gradient-to-br from-pink-50 to-white rounded-2xl border border-pink-100 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-center w-14 h-14 bg-pink-100 rounded-lg mb-4">
+                <BarChart3 className="h-7 w-7 text-pink-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Usage Analytics</h3>
+              <p className="text-gray-600">
+                Track credit usage, monitor project progress, and gain insights into your 
+                inspection operations with comprehensive analytics.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* How It Works Section */}
+      <div className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Simple 4-Step Workflow
+            </h2>
+            <p className="text-xl text-gray-600">
+              From inspection to report in minutes, not hours
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="relative">
+                <div className="flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-full mx-auto mb-4 text-2xl font-bold">
+                  1
+                </div>
+                <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gray-300"></div>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Upload Videos</h3>
+              <p className="text-gray-600 text-sm">
+                Upload CCTV inspection videos in any format
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="relative">
+                <div className="flex items-center justify-center w-16 h-16 bg-orange-500 text-white rounded-full mx-auto mb-4 text-2xl font-bold">
+                  2
+                </div>
+                <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gray-300"></div>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Document Observations</h3>
+              <p className="text-gray-600 text-sm">
+                Record defects with AI assistance and severity scoring
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="relative">
+                <div className="flex items-center justify-center w-16 h-16 bg-green-600 text-white rounded-full mx-auto mb-4 text-2xl font-bold">
+                  3
+                </div>
+                <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gray-300"></div>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Map Infrastructure</h3>
+              <p className="text-gray-600 text-sm">
+                Create visual maps of the inspection area
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="relative">
+                <div className="flex items-center justify-center w-16 h-16 bg-purple-600 text-white rounded-full mx-auto mb-4 text-2xl font-bold">
+                  4
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Generate Report</h3>
+              <p className="text-gray-600 text-sm">
+                Professional PDF reports with AI summaries
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA Section */}
+      <div className="py-20 bg-gradient-to-r from-blue-600 to-blue-700">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Ready to Transform Your Inspection Workflow?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8">
+            Join hundreds of drainage professionals using PipeReport.ai
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link 
+              href="/auth/signup"
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-blue-600 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 transform transition hover:scale-105"
+            >
+              Start Your Free Trial
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+            <Link 
+              href="/auth/login"
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white border-2 border-white rounded-lg hover:bg-white hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 transition"
+            >
+              Sign In to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-400 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="mb-4">© 2025 PipeReport.ai. All rights reserved.</p>
+            <p className="text-sm">
+              Professional CCTV Inspection Reporting Platform
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
   )
 }
 
@@ -36,29 +331,17 @@ function HomePageContent() {
 
   // Redirect super admins to admin dashboard
   useEffect(() => {
-    console.log('=== Super Admin Check ===')
-    console.log('authLoading:', authLoading)
-    console.log('profile:', profile)
-    console.log('profile?.role:', profile?.role)
-    console.log('isSuperAdmin:', isSuperAdmin)
-    
     if (!authLoading && profile && isSuperAdmin) {
-      console.log('Super admin detected, redirecting to /admin')
-      // Try window.location for more reliable redirect
       window.location.href = '/admin'
     }
   }, [authLoading, profile, isSuperAdmin])
 
   useEffect(() => {
-    // Only load projects if we have a user and haven't loaded them yet
-    // Also skip if user is a super admin (they'll be redirected)
     if (!authLoading && user && !hasLoadedProjects && !isSuperAdmin) {
       loadProjects()
     } else if (!authLoading && !user) {
-      // This shouldn't happen as ProtectedRoute should redirect, but just in case
       setLoading(false)
     } else if (!authLoading && hasLoadedProjects) {
-      // Auth is done and we've already loaded projects, so no loading
       setLoading(false)
     }
   }, [authLoading, user, hasLoadedProjects, isSuperAdmin])
@@ -68,8 +351,6 @@ function HomePageContent() {
     
     setLoading(true)
     try {
-      // Load user's projects with enhanced data including observation statistics
-      // Exclude archived projects
       const { data: projects, error } = await supabase
         .from('projects')
         .select(`
@@ -85,7 +366,7 @@ function HomePageContent() {
             )
           )
         `)
-        .neq('status', 'archived')  // Exclude archived projects
+        .neq('status', 'archived')
         .order('created_at', { ascending: false })
       
       if (error) {
@@ -96,7 +377,6 @@ function HomePageContent() {
         setHasLoadedProjects(true)
       }
 
-      // Get count of archived projects
       const { count: archiveCount } = await supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
@@ -112,11 +392,10 @@ function HomePageContent() {
     }
   }
 
-  // Filter and sort projects whenever search, sort, or filter changes
+  // Filter and sort projects
   useEffect(() => {
     let filtered = [...allProjects]
 
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(project => 
         project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,12 +406,10 @@ function HomePageContent() {
       )
     }
 
-    // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(project => project.status === statusFilter)
     }
 
-    // Apply sorting
     filtered.sort((a, b) => {
       let aValue, bValue
 
@@ -182,16 +459,13 @@ function HomePageContent() {
     setDeletingProject(projectId)
     
     try {
-      // Delete the project (cascading deletes will handle sections and observations)
       const { error } = await supabase
         .from('projects')
         .delete()
         .eq('id', projectId)
         
-      
       if (error) throw error
       
-      // Remove from local state
       setAllProjects(prev => prev.filter(p => p.id !== projectId))
       setProjectToDelete(null)
       
@@ -243,7 +517,6 @@ function HomePageContent() {
     const allObservations = project.sections?.flatMap(s => s.observations || []) || []
     const observationCount = allObservations.length
     
-    // Calculate severity statistics
     const severityStats = {
       high: allObservations.filter(o => o.severity >= 4).length,
       medium: allObservations.filter(o => o.severity === 3).length,
@@ -270,7 +543,6 @@ function HomePageContent() {
     { value: 'complete', label: 'Complete' }
   ]
 
-  // Show loading state while checking auth or redirecting super admin
   if (authLoading || (loading && !hasLoadedProjects) || (profile && isSuperAdmin)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -286,32 +558,11 @@ function HomePageContent() {
 
   return (
     <div>
-      {/* Version Banner for Blue-Green Deployment Testing */}
-      <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-3 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-blue-900">
-                🚀 Version 2.1.0 - Blue-Green Deployment Test
-              </span>
-            </div>
-            <div className="text-xs bg-blue-100 px-2 py-1 rounded-full text-blue-700">
-              {process.env.VERCEL_ENV || 'development'}
-            </div>
-          </div>
-          <div className="text-xs text-blue-600">
-            Deployed: {new Date().toLocaleDateString()}
-          </div>
-        </div>
-      </div>
-
       {/* Header with Company Info */}
       <div className="flex justify-between items-start mb-8">
         <div className="flex-1">
           <div className="flex items-center mb-2">
             <h1 className="text-3xl font-bold text-gray-900 mr-4">Your Projects</h1>
-            
           </div>
           <div className="flex items-center gap-4">
             <p className="text-gray-600">
@@ -361,7 +612,6 @@ function HomePageContent() {
       {/* Search and Filter Controls */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -373,7 +623,6 @@ function HomePageContent() {
             />
           </div>
 
-          {/* Status Filter */}
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <select
@@ -389,7 +638,6 @@ function HomePageContent() {
             </select>
           </div>
 
-          {/* Sort By */}
           <div>
             <select
               value={sortBy}
@@ -404,7 +652,6 @@ function HomePageContent() {
             </select>
           </div>
 
-          {/* Sort Order */}
           <div>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -420,6 +667,7 @@ function HomePageContent() {
         </div>
       </div>
       
+      {/* Projects Grid */}
       {filteredProjects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredProjects.map(project => {
@@ -428,7 +676,6 @@ function HomePageContent() {
             
             return (
               <div key={project.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all duration-200 transform hover:-translate-y-1">
-                {/* Enhanced Header */}
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
@@ -459,7 +706,6 @@ function HomePageContent() {
                     </div>
                   </div>
 
-                  {/* Enhanced Site/Client Info */}
                   <div className="space-y-1.5 mb-3">
                     {project.site_street_address && (
                       <div className="flex items-center text-xs text-gray-600">
@@ -478,7 +724,6 @@ function HomePageContent() {
                     )}
                   </div>
 
-                  {/* Enhanced Statistics Grid */}
                   <div className="bg-gray-50 rounded-lg p-3 mb-3">
                     <div className="grid grid-cols-3 gap-2 mb-2 text-xs">
                       <div className="text-center">
@@ -495,7 +740,6 @@ function HomePageContent() {
                       </div>
                     </div>
                     
-                    {/* Severity Statistics */}
                     {stats.observationCount > 0 && (
                       <div className="flex justify-between text-xs">
                         <span className="flex items-center">
@@ -523,7 +767,6 @@ function HomePageContent() {
                   </div>
                 </div>
 
-                {/* Enhanced Action Button */}
                 <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-100">
                   <Link 
                     href={`/projects/${project.id}`}
@@ -586,7 +829,7 @@ function HomePageContent() {
         </div>
       )}
 
-      {/* Enhanced Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       {projectToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity">
           <div className="bg-white rounded-lg max-w-md w-full p-6 transform transition-all">

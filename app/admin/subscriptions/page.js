@@ -31,9 +31,11 @@ export default function AdminSubscriptionsPage() {
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [creditPacks, setCreditPacks] = useState([])
   
-  // Edit states
-  const [editingPlan, setEditingPlan] = useState(null)
-  const [editingPack, setEditingPack] = useState(null)
+  // Edit states - using IDs instead of objects
+  const [editingPlanId, setEditingPlanId] = useState(null)
+  const [editingPackId, setEditingPackId] = useState(null)
+  const [editingPlanData, setEditingPlanData] = useState(null)
+  const [editingPackData, setEditingPackData] = useState(null)
   const [newPlan, setNewPlan] = useState(null)
   const [newPack, setNewPack] = useState(null)
 
@@ -72,6 +74,26 @@ export default function AdminSubscriptionsPage() {
     }
   }
 
+  const startEditingPlan = (plan) => {
+    setEditingPlanId(plan.id)
+    setEditingPlanData({ ...plan })
+  }
+
+  const cancelEditingPlan = () => {
+    setEditingPlanId(null)
+    setEditingPlanData(null)
+  }
+
+  const startEditingPack = (pack) => {
+    setEditingPackId(pack.id)
+    setEditingPackData({ ...pack })
+  }
+
+  const cancelEditingPack = () => {
+    setEditingPackId(null)
+    setEditingPackData(null)
+  }
+
   const handleSavePlan = async (plan) => {
     try {
       setSaving(true)
@@ -90,9 +112,9 @@ export default function AdminSubscriptionsPage() {
           .update({
             name: plan.name,
             description: plan.description,
-            price_pennies: parseInt(plan.price_pennies),
-            credits: parseInt(plan.credits),
-            duration_months: parseInt(plan.duration_months),
+            price_pennies: parseInt(plan.price_pennies) || 0,
+            credits: parseInt(plan.credits) || 0,
+            duration_months: parseInt(plan.duration_months) || 1,
             is_active: plan.is_active,
             sort_order: parseInt(plan.sort_order) || 0,
             updated_at: new Date().toISOString()
@@ -107,9 +129,9 @@ export default function AdminSubscriptionsPage() {
           .insert({
             name: plan.name,
             description: plan.description,
-            price_pennies: parseInt(plan.price_pennies),
-            credits: parseInt(plan.credits),
-            duration_months: parseInt(plan.duration_months),
+            price_pennies: parseInt(plan.price_pennies) || 0,
+            credits: parseInt(plan.credits) || 0,
+            duration_months: parseInt(plan.duration_months) || 1,
             is_active: plan.is_active,
             sort_order: parseInt(plan.sort_order) || 0
           })
@@ -117,7 +139,7 @@ export default function AdminSubscriptionsPage() {
         if (error) throw error
       }
       
-      setEditingPlan(null)
+      cancelEditingPlan()
       setNewPlan(null)
       await loadData()
     } catch (error) {
@@ -139,8 +161,8 @@ export default function AdminSubscriptionsPage() {
           .update({
             name: pack.name,
             description: pack.description,
-            credits: parseInt(pack.credits),
-            price_pennies: parseInt(pack.price_pennies),
+            credits: parseInt(pack.credits) || 0,
+            price_pennies: parseInt(pack.price_pennies) || 0,
             is_active: pack.is_active,
             sort_order: parseInt(pack.sort_order) || 0,
             updated_at: new Date().toISOString()
@@ -155,8 +177,8 @@ export default function AdminSubscriptionsPage() {
           .insert({
             name: pack.name,
             description: pack.description,
-            credits: parseInt(pack.credits),
-            price_pennies: parseInt(pack.price_pennies),
+            credits: parseInt(pack.credits) || 0,
+            price_pennies: parseInt(pack.price_pennies) || 0,
             is_active: pack.is_active,
             sort_order: parseInt(pack.sort_order) || 0
           })
@@ -164,7 +186,7 @@ export default function AdminSubscriptionsPage() {
         if (error) throw error
       }
       
-      setEditingPack(null)
+      cancelEditingPack()
       setNewPack(null)
       await loadData()
     } catch (error) {
@@ -182,7 +204,40 @@ export default function AdminSubscriptionsPage() {
       return
     }
     
-    if (!confirm('Are you sure you want to delete this plan?')) return
+    // Check if plan is being used by any subscriptions
+    try {
+      const { data: subscriptions, error: checkError } = await supabase
+        .from('subscriptions')
+        .select('id, companies(name)')
+        .eq('subscription_plan_id', id)
+        .limit(5)
+      
+      if (checkError) throw checkError
+      
+      if (subscriptions && subscriptions.length > 0) {
+        const companyNames = subscriptions.map(s => s.companies?.name || 'Unknown').join(', ')
+        const message = `Cannot delete this plan because it's currently being used by ${subscriptions.length} subscription(s) (${companyNames}${subscriptions.length > 5 ? ' and others' : ''}).\n\nYou can deactivate this plan instead to prevent new subscriptions while keeping existing ones.`
+        
+        if (confirm(message + '\n\nWould you like to deactivate this plan instead?')) {
+          // Deactivate the plan instead
+          const { error } = await supabase
+            .from('subscription_plans')
+            .update({ is_active: false })
+            .eq('id', id)
+          
+          if (error) throw error
+          await loadData()
+          alert('Plan has been deactivated. Existing subscriptions will continue, but no new subscriptions can be created with this plan.')
+        }
+        return
+      }
+    } catch (error) {
+      console.error('Error checking subscriptions:', error)
+      alert('Failed to check if plan is in use: ' + error.message)
+      return
+    }
+    
+    if (!confirm('Are you sure you want to delete this plan? This action cannot be undone.')) return
     
     try {
       const { error } = await supabase
@@ -192,6 +247,7 @@ export default function AdminSubscriptionsPage() {
       
       if (error) throw error
       await loadData()
+      alert('Plan deleted successfully.')
     } catch (error) {
       console.error('Error deleting plan:', error)
       alert('Failed to delete plan: ' + error.message)
@@ -199,7 +255,40 @@ export default function AdminSubscriptionsPage() {
   }
 
   const handleDeletePack = async (id) => {
-    if (!confirm('Are you sure you want to delete this pack?')) return
+    // Check if pack is being used by any purchase history
+    try {
+      const { data: purchases, error: checkError } = await supabase
+        .from('purchase_history')
+        .select('id, companies(name)')
+        .eq('credit_pack_id', id)
+        .limit(5)
+      
+      if (checkError) throw checkError
+      
+      if (purchases && purchases.length > 0) {
+        const companyNames = purchases.map(p => p.companies?.name || 'Unknown').join(', ')
+        const message = `Cannot delete this credit pack because it has been purchased ${purchases.length} time(s) (${companyNames}${purchases.length > 5 ? ' and others' : ''}).\n\nYou can deactivate this pack instead to prevent new purchases while keeping the purchase history.`
+        
+        if (confirm(message + '\n\nWould you like to deactivate this pack instead?')) {
+          // Deactivate the pack instead
+          const { error } = await supabase
+            .from('credit_packs')
+            .update({ is_active: false })
+            .eq('id', id)
+          
+          if (error) throw error
+          await loadData()
+          alert('Credit pack has been deactivated. Purchase history is preserved, but this pack is no longer available for new purchases.')
+        }
+        return
+      }
+    } catch (error) {
+      console.error('Error checking purchases:', error)
+      alert('Failed to check if pack is in use: ' + error.message)
+      return
+    }
+    
+    if (!confirm('Are you sure you want to delete this credit pack? This action cannot be undone.')) return
     
     try {
       const { error } = await supabase
@@ -209,6 +298,7 @@ export default function AdminSubscriptionsPage() {
       
       if (error) throw error
       await loadData()
+      alert('Credit pack deleted successfully.')
     } catch (error) {
       console.error('Error deleting pack:', error)
       alert('Failed to delete pack: ' + error.message)
@@ -225,8 +315,9 @@ export default function AdminSubscriptionsPage() {
     return `${months} months`
   }
 
-  const PlanRow = ({ plan, isEditing, onChange, onSave, onCancel }) => {
+  const PlanRow = ({ plan, isEditing, editData, onFieldChange, onSave, onCancel }) => {
     const isTrial = plan.name?.toLowerCase() === 'trial'
+    const displayData = isEditing ? editData : plan
     
     if (isEditing) {
       return (
@@ -234,8 +325,8 @@ export default function AdminSubscriptionsPage() {
           <td className="px-6 py-4">
             <input
               type="text"
-              value={plan.name}
-              onChange={(e) => onChange({ ...plan, name: e.target.value })}
+              value={editData?.name || ''}
+              onChange={(e) => onFieldChange({ ...editData, name: e.target.value })}
               className="w-full px-2 py-1 border rounded"
               disabled={isTrial}
             />
@@ -246,16 +337,16 @@ export default function AdminSubscriptionsPage() {
           <td className="px-6 py-4">
             <input
               type="text"
-              value={plan.description}
-              onChange={(e) => onChange({ ...plan, description: e.target.value })}
+              value={editData?.description || ''}
+              onChange={(e) => onFieldChange({ ...editData, description: e.target.value })}
               className="w-full px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="number"
-              value={plan.price_pennies}
-              onChange={(e) => onChange({ ...plan, price_pennies: e.target.value })}
+              value={editData?.price_pennies || 0}
+              onChange={(e) => onFieldChange({ ...editData, price_pennies: e.target.value })}
               className="w-24 px-2 py-1 border rounded"
               disabled={isTrial}
             />
@@ -266,47 +357,48 @@ export default function AdminSubscriptionsPage() {
           <td className="px-6 py-4">
             <input
               type="number"
-              value={plan.credits}
-              onChange={(e) => onChange({ ...plan, credits: e.target.value })}
+              value={editData?.credits || 0}
+              onChange={(e) => onFieldChange({ ...editData, credits: e.target.value })}
               className="w-24 px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="number"
-              value={plan.duration_months}
-              onChange={(e) => onChange({ ...plan, duration_months: e.target.value })}
+              value={editData?.duration_months || 1}
+              onChange={(e) => onFieldChange({ ...editData, duration_months: e.target.value })}
               className="w-20 px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="checkbox"
-              checked={plan.is_active}
-              onChange={(e) => onChange({ ...plan, is_active: e.target.checked })}
+              checked={editData?.is_active || false}
+              onChange={(e) => onFieldChange({ ...editData, is_active: e.target.checked })}
               className="w-4 h-4"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="number"
-              value={plan.sort_order}
-              onChange={(e) => onChange({ ...plan, sort_order: e.target.value })}
+              value={editData?.sort_order || 0}
+              onChange={(e) => onFieldChange({ ...editData, sort_order: e.target.value })}
               className="w-16 px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <div className="flex space-x-2">
               <button
-                onClick={() => onSave(plan)}
+                onClick={() => onSave(editData)}
                 disabled={saving}
-                className="text-green-600 hover:text-green-900"
+                className="text-green-600 hover:text-green-900 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               </button>
               <button
                 onClick={onCancel}
-                className="text-red-600 hover:text-red-900"
+                disabled={saving}
+                className="text-red-600 hover:text-red-900 disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -320,7 +412,7 @@ export default function AdminSubscriptionsPage() {
       <tr className={`hover:bg-gray-50 ${isTrial ? 'bg-blue-50' : ''}`}>
         <td className="px-6 py-4 font-medium">
           <div className="flex items-center">
-            {plan.name}
+            {displayData.name}
             {isTrial && (
               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                 <Sparkles className="w-3 h-3 mr-1" />
@@ -329,28 +421,28 @@ export default function AdminSubscriptionsPage() {
             )}
           </div>
         </td>
-        <td className="px-6 py-4 text-sm text-gray-600">{plan.description}</td>
+        <td className="px-6 py-4 text-sm text-gray-600">{displayData.description}</td>
         <td className="px-6 py-4">
           {isTrial ? (
             <span className="text-green-600 font-medium">Free</span>
           ) : (
-            formatPrice(plan.price_pennies)
+            formatPrice(displayData.price_pennies)
           )}
         </td>
-        <td className="px-6 py-4">{plan.credits.toLocaleString()}</td>
-        <td className="px-6 py-4">{formatDuration(plan.duration_months)}</td>
+        <td className="px-6 py-4">{displayData.credits?.toLocaleString()}</td>
+        <td className="px-6 py-4">{formatDuration(displayData.duration_months)}</td>
         <td className="px-6 py-4">
-          {plan.is_active ? (
+          {displayData.is_active ? (
             <Check className="w-4 h-4 text-green-600" />
           ) : (
             <X className="w-4 h-4 text-red-600" />
           )}
         </td>
-        <td className="px-6 py-4">{plan.sort_order}</td>
+        <td className="px-6 py-4">{displayData.sort_order}</td>
         <td className="px-6 py-4">
           <div className="flex space-x-2">
             <button
-              onClick={() => setEditingPlan(plan)}
+              onClick={() => startEditingPlan(plan)}
               className="text-blue-600 hover:text-blue-900"
             >
               <Edit2 className="w-4 h-4" />
@@ -369,70 +461,73 @@ export default function AdminSubscriptionsPage() {
     )
   }
 
-  const PackRow = ({ pack, isEditing, onChange, onSave, onCancel }) => {
+  const PackRow = ({ pack, isEditing, editData, onFieldChange, onSave, onCancel }) => {
+    const displayData = isEditing ? editData : pack
+    
     if (isEditing) {
       return (
         <tr className="bg-blue-50">
           <td className="px-6 py-4">
             <input
               type="text"
-              value={pack.name}
-              onChange={(e) => onChange({ ...pack, name: e.target.value })}
+              value={editData?.name || ''}
+              onChange={(e) => onFieldChange({ ...editData, name: e.target.value })}
               className="w-full px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="text"
-              value={pack.description}
-              onChange={(e) => onChange({ ...pack, description: e.target.value })}
+              value={editData?.description || ''}
+              onChange={(e) => onFieldChange({ ...editData, description: e.target.value })}
               className="w-full px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="number"
-              value={pack.credits}
-              onChange={(e) => onChange({ ...pack, credits: e.target.value })}
+              value={editData?.credits || 0}
+              onChange={(e) => onFieldChange({ ...editData, credits: e.target.value })}
               className="w-24 px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="number"
-              value={pack.price_pennies}
-              onChange={(e) => onChange({ ...pack, price_pennies: e.target.value })}
+              value={editData?.price_pennies || 0}
+              onChange={(e) => onFieldChange({ ...editData, price_pennies: e.target.value })}
               className="w-24 px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="checkbox"
-              checked={pack.is_active}
-              onChange={(e) => onChange({ ...pack, is_active: e.target.checked })}
+              checked={editData?.is_active || false}
+              onChange={(e) => onFieldChange({ ...editData, is_active: e.target.checked })}
               className="w-4 h-4"
             />
           </td>
           <td className="px-6 py-4">
             <input
               type="number"
-              value={pack.sort_order}
-              onChange={(e) => onChange({ ...pack, sort_order: e.target.value })}
+              value={editData?.sort_order || 0}
+              onChange={(e) => onFieldChange({ ...editData, sort_order: e.target.value })}
               className="w-16 px-2 py-1 border rounded"
             />
           </td>
           <td className="px-6 py-4">
             <div className="flex space-x-2">
               <button
-                onClick={() => onSave(pack)}
+                onClick={() => onSave(editData)}
                 disabled={saving}
-                className="text-green-600 hover:text-green-900"
+                className="text-green-600 hover:text-green-900 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               </button>
               <button
                 onClick={onCancel}
-                className="text-red-600 hover:text-red-900"
+                disabled={saving}
+                className="text-red-600 hover:text-red-900 disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -444,22 +539,22 @@ export default function AdminSubscriptionsPage() {
 
     return (
       <tr className="hover:bg-gray-50">
-        <td className="px-6 py-4 font-medium">{pack.name}</td>
-        <td className="px-6 py-4 text-sm text-gray-600">{pack.description}</td>
-        <td className="px-6 py-4">{pack.credits.toLocaleString()}</td>
-        <td className="px-6 py-4">{formatPrice(pack.price_pennies)}</td>
+        <td className="px-6 py-4 font-medium">{displayData.name}</td>
+        <td className="px-6 py-4 text-sm text-gray-600">{displayData.description}</td>
+        <td className="px-6 py-4">{displayData.credits?.toLocaleString()}</td>
+        <td className="px-6 py-4">{formatPrice(displayData.price_pennies)}</td>
         <td className="px-6 py-4">
-          {pack.is_active ? (
+          {displayData.is_active ? (
             <Check className="w-4 h-4 text-green-600" />
           ) : (
             <X className="w-4 h-4 text-red-600" />
           )}
         </td>
-        <td className="px-6 py-4">{pack.sort_order}</td>
+        <td className="px-6 py-4">{displayData.sort_order}</td>
         <td className="px-6 py-4">
           <div className="flex space-x-2">
             <button
-              onClick={() => setEditingPack(pack)}
+              onClick={() => startEditingPack(pack)}
               className="text-blue-600 hover:text-blue-900"
             >
               <Edit2 className="w-4 h-4" />
@@ -591,7 +686,8 @@ export default function AdminSubscriptionsPage() {
                     <PlanRow
                       plan={newPlan}
                       isEditing={true}
-                      onChange={setNewPlan}
+                      editData={newPlan}
+                      onFieldChange={setNewPlan}
                       onSave={handleSavePlan}
                       onCancel={() => setNewPlan(null)}
                     />
@@ -600,10 +696,11 @@ export default function AdminSubscriptionsPage() {
                     <PlanRow
                       key={plan.id}
                       plan={plan}
-                      isEditing={editingPlan?.id === plan.id}
-                      onChange={setEditingPlan}
+                      isEditing={editingPlanId === plan.id}
+                      editData={editingPlanData}
+                      onFieldChange={setEditingPlanData}
                       onSave={handleSavePlan}
-                      onCancel={() => setEditingPlan(null)}
+                      onCancel={cancelEditingPlan}
                     />
                   ))}
                 </tbody>
@@ -663,7 +760,8 @@ export default function AdminSubscriptionsPage() {
                     <PackRow
                       pack={newPack}
                       isEditing={true}
-                      onChange={setNewPack}
+                      editData={newPack}
+                      onFieldChange={setNewPack}
                       onSave={handleSavePack}
                       onCancel={() => setNewPack(null)}
                     />
@@ -672,10 +770,11 @@ export default function AdminSubscriptionsPage() {
                     <PackRow
                       key={pack.id}
                       pack={pack}
-                      isEditing={editingPack?.id === pack.id}
-                      onChange={setEditingPack}
+                      isEditing={editingPackId === pack.id}
+                      editData={editingPackData}
+                      onFieldChange={setEditingPackData}
                       onSave={handleSavePack}
-                      onCancel={() => setEditingPack(null)}
+                      onCancel={cancelEditingPack}
                     />
                   ))}
                 </tbody>

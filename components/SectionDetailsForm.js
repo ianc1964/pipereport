@@ -152,7 +152,7 @@ export default function SectionDetailsForm({
     location_if_different: '',
     general_remarks: '',
     
-    // Video fields
+    // Video fields - Initialize as empty to prevent pre-population
     video_url: '',
     video_filename: '',
     video_duration: null,
@@ -208,7 +208,7 @@ export default function SectionDetailsForm({
     }
   }, [isOpen, sectionData, copiedFromPrevious])
 
-  // Function to copy previous section data
+  // FIXED: Function to copy previous section data - excludes refs and coordinates
   const copyFromPreviousSection = async () => {
     if (!projectId) return null
 
@@ -229,17 +229,17 @@ export default function SectionDetailsForm({
       const previousSection = previousSections[0]
       console.log('Found previous section to copy from:', previousSection.name)
 
-      // Copy all fields EXCEPT start_ref, finish_ref, and video data
+      // FIXED: Copy all fields EXCEPT start_ref, finish_ref, coordinates, and video data
       const copiedData = {
-        // Don't copy: name, section_number, start_ref, finish_ref, video data
+        // EXPLICITLY EXCLUDE: name, section_number, start_ref, finish_ref, start_coordinates, finish_coordinates, video data
         
-        // Copy technical details
+        // Copy technical details (but NOT refs or coordinates)
         start_type: previousSection.start_type,
         start_depth: previousSection.start_depth,
-        start_coordinates: previousSection.start_coordinates,
+        // EXCLUDED: start_ref and start_coordinates - should not be copied
         finish_type: previousSection.finish_type,
         finish_depth: previousSection.finish_depth,
-        finish_coordinates: previousSection.finish_coordinates,
+        // EXCLUDED: finish_ref and finish_coordinates - should not be copied
         
         // Copy pipe details
         direction: previousSection.direction,
@@ -263,7 +263,7 @@ export default function SectionDetailsForm({
         location_if_different: previousSection.location_if_different,
         general_remarks: previousSection.general_remarks
         
-        // Don't copy inspection_date or video data
+        // Don't copy inspection_date, video data, refs, or coordinates
       }
 
       return copiedData
@@ -273,7 +273,7 @@ export default function SectionDetailsForm({
     }
   }
 
-  // Get next section number or populate existing data
+  // FIXED: Get next section number or populate existing data
   useEffect(() => {
     const initializeForm = async () => {
       if (!projectId || !isOpen) return
@@ -326,7 +326,12 @@ export default function SectionDetailsForm({
             })
           }
         } else {
-          // Adding new section - get next section number and try to copy previous section
+          // FIXED: Adding new section - reset all video-related state
+          setVideoSource('none')
+          setVideoData(null)
+          setSelectedPoolVideo(null)
+          
+          // Get next section number and try to copy previous section
           try {
             const { data, error } = await supabase.rpc('get_next_section_number', {
               project_uuid: projectId
@@ -356,20 +361,30 @@ export default function SectionDetailsForm({
             const copiedData = await copyFromPreviousSection()
             
             if (copiedData) {
-              console.log('Copying data from previous section')
+              console.log('Copying data from previous section (excluding refs and coordinates)')
               setCopiedFromPrevious(true)
               setFormData(prev => ({
                 ...prev,
                 section_number: newSectionNumber,
                 name: `Section ${newSectionNumber}`,
-                ...copiedData
+                ...copiedData,
+                // FIXED: Ensure video fields are empty for new sections
+                video_url: '',
+                video_filename: '',
+                video_duration: null,
+                video_metadata: null
               }))
             } else {
               // No previous section to copy from
               setFormData(prev => ({
                 ...prev,
                 section_number: newSectionNumber,
-                name: `Section ${newSectionNumber}`
+                name: `Section ${newSectionNumber}`,
+                // FIXED: Explicitly set video fields to empty
+                video_url: '',
+                video_filename: '',
+                video_duration: null,
+                video_metadata: null
               }))
             }
           } catch (rpcError) {
@@ -378,7 +393,12 @@ export default function SectionDetailsForm({
             setFormData(prev => ({
               ...prev,
               section_number: 1,
-              name: 'Section 1'
+              name: 'Section 1',
+              // FIXED: Ensure video fields are empty
+              video_url: '',
+              video_filename: '',
+              video_duration: null,
+              video_metadata: null
             }))
           }
         }
@@ -461,6 +481,7 @@ export default function SectionDetailsForm({
     return cleanData
   }
 
+  // FIXED: Enhanced submit with better foreign key constraint handling
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -599,7 +620,7 @@ export default function SectionDetailsForm({
             {copiedFromPrevious && !sectionData && (
               <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
                 <Copy className="w-3 h-3" />
-                Copied from previous section
+                Settings copied (refs excluded)
               </div>
             )}
           </div>
@@ -633,7 +654,7 @@ export default function SectionDetailsForm({
             </div>
           </div>
 
-          {/* Video Section - NEW */}
+          {/* Video Section - FIXED */}
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-900 mb-3 border-b pb-1 flex items-center gap-2">
               <Film className="w-4 h-4" />
