@@ -4,8 +4,11 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Upload, X, Building2, User, FileImage, Copy, ArrowLeft } from 'lucide-react'
+import { useAuth } from '@/lib/auth-context'
 
 export default function ProjectEditPage() {
+  const { user, profile, company, isSuperAdmin, loading: authLoading } = useAuth()
+  
   const [formData, setFormData] = useState({
     // Basic Project Info
     name: '',
@@ -48,31 +51,69 @@ export default function ProjectEditPage() {
   const router = useRouter()
   const params = useParams()
 
+  // Handle auth redirect
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login')
+    }
+  }, [authLoading, user, router])
+
   // Load project data and clients
   useEffect(() => {
     let isCancelled = false
     
     const loadProjectAndClients = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user || isCancelled) return
+      // Wait for auth to be ready
+      if (authLoading || !user) {
+        return
+      }
 
-        // Load project data
-        const { data: project, error: projectError } = await supabase
+      // Check company authorization for non-super admins
+      if (!isSuperAdmin && !company?.id) {
+        setError('Access denied: No company association found')
+        setLoading(false)
+        return
+      }
+
+      try {
+        console.log('🔒 Loading project with company authorization for editing...')
+
+        // 🔒 SECURITY: Load project with company filtering
+        let projectQuery = supabase
           .from('projects')
-          .select('*')
+          .select(`
+            *,
+            companies (
+              id,
+              name
+            )
+          `)
           .eq('id', params.id)
-          .eq('user_id', user.id) // Security check
-          .single()
+
+        // 🔒 Apply company filtering for non-super admins
+        if (!isSuperAdmin && company?.id) {
+          console.log('🔒 Applying company filter for edit access:', company.id)
+          projectQuery = projectQuery.eq('company_id', company.id)
+        }
+
+        const { data: project, error: projectError } = await projectQuery.single()
 
         if (projectError) {
+          console.error('❌ Project query error:', projectError)
           if (projectError.code === 'PGRST116') {
-            setError('Project not found or access denied')
+            setError('Project not found or you do not have permission to edit it')
           } else {
             throw projectError
           }
           return
         }
+
+        if (!project) {
+          setError('Project not found or access denied')
+          return
+        }
+
+        console.log('✅ Project loaded with edit authorization')
 
         if (!isCancelled) {
           // Pre-populate form with project data
@@ -108,14 +149,14 @@ export default function ProjectEditPage() {
         const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', user.id) // Clients are still user-specific
           .order('client_name')
 
         if (clientsError) throw clientsError
         if (!isCancelled) setClients(clientsData || [])
 
       } catch (error) {
-        console.error('Error loading project:', error)
+        console.error('❌ Error loading project:', error)
         if (!isCancelled) setError(error.message || 'Failed to load project')
       } finally {
         if (!isCancelled) setLoading(false)
@@ -124,7 +165,7 @@ export default function ProjectEditPage() {
 
     loadProjectAndClients()
     return () => { isCancelled = true }
-  }, [params.id])
+  }, [params.id, authLoading, user, company, isSuperAdmin])
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -212,6 +253,14 @@ export default function ProjectEditPage() {
         return
       }
 
+      // 🔒 SECURITY: Double-check company authorization before update
+      if (!isSuperAdmin && !company?.id) {
+        setError('Access denied: No company authorization')
+        return
+      }
+
+      console.log('🔒 Updating project with company authorization...')
+
       // Prepare the project data
       const projectData = {
         name: formData.name.trim(),
@@ -244,15 +293,30 @@ export default function ProjectEditPage() {
         updated_at: new Date().toISOString()
       }
 
-      // Update the project
-      const { data, error } = await supabase
+      // 🔒 SECURITY: Update with company filtering
+      let updateQuery = supabase
         .from('projects')
         .update(projectData)
         .eq('id', params.id)
-        .eq('user_id', user.id) // Security check
-        .select()
 
-      if (error) throw error
+      // 🔒 Apply company filtering for non-super admins
+      if (!isSuperAdmin && company?.id) {
+        console.log('🔒 Applying company filter for update:', company.id)
+        updateQuery = updateQuery.eq('company_id', company.id)
+      }
+
+      const { data, error } = await updateQuery.select()
+
+      if (error) {
+        console.error('❌ Update error:', error)
+        throw error
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('Project not found or you do not have permission to edit it')
+      }
+
+      console.log('✅ Project updated successfully')
 
       // If we used client details but no existing client was selected, 
       // optionally save as new client for future use
@@ -277,7 +341,7 @@ export default function ProjectEditPage() {
       router.push(`/projects/${params.id}`)
       
     } catch (error) {
-      console.error('Error updating project:', error)
+      console.error('❌ Error updating project:', error)
       setError(error.message || 'Failed to update project')
     } finally {
       setSaving(false)
@@ -291,6 +355,16 @@ export default function ProjectEditPage() {
     { value: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' }
   ]
 
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-lg text-gray-500">Loading...</div>
+      </div>
+    )
+  }
+
+  // Show loading while project is loading
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -299,6 +373,7 @@ export default function ProjectEditPage() {
     )
   }
 
+  // Show error if project couldn't be loaded or no access
   if (error && !formData.name) {
     return (
       <div className="max-w-2xl mx-auto">

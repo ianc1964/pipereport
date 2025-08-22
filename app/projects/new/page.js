@@ -176,9 +176,22 @@ export default function EnhancedNewProjectPage() {
         return
       }
 
+      // Get user's profile and company information
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile?.company_id) {
+        setError('Unable to determine your company. Please contact support.')
+        return
+      }
+
       // Prepare the project data
       const projectData = {
         user_id: user.id,
+        company_id: profile.company_id,
         name: formData.name.trim(),
         description: formData.description.trim(),
         status: formData.status,

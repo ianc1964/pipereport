@@ -1,49 +1,27 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { getObservations } from '@/lib/observations'
+import { useAuth } from '@/lib/auth-context'
 
-// Retry helper function
-async function retryOperation(operation, maxRetries = 3, delay = 1000) {
+// Optimized retry helper with faster initial attempts
+async function retryOperation(operation, maxRetries = 2, delay = 300) {
   let lastError
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await operation()
     } catch (error) {
       lastError = error
-      console.log(`Retry ${i + 1}/${maxRetries} failed:`, error.message)
       if (i < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i))) // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1))) // Linear backoff instead of exponential
       }
     }
   }
   throw lastError
 }
 
-// Wait for auth with timeout
-async function waitForAuth(timeout = 10000) {
-  const startTime = Date.now()
-  
-  while (Date.now() - startTime < timeout) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        // Give a small delay to ensure auth context is fully loaded
-        await new Promise(resolve => setTimeout(resolve, 500))
-        return session.user
-      }
-    } catch (error) {
-      console.log('Error getting session:', error)
-    }
-    
-    // Check every 200ms
-    await new Promise(resolve => setTimeout(resolve, 200))
-  }
-  
-  return null
-}
-
 export const useProjectData = (projectId, retryTrigger = 0) => {
+  const { user, profile, company, isSuperAdmin, loading: authLoading } = useAuth()
+  
   // Core data state
   const [project, setProject] = useState(null)
   const [sections, setSections] = useState([])
@@ -60,7 +38,7 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
   const [deletingVideoId, setDeletingVideoId] = useState(null)
   const [deletingSectionId, setDeletingSectionId] = useState(null)
 
-  // Track if we're currently loading to prevent duplicate calls
+  // Track loading state
   const loadingRef = useRef(false)
   const mountedRef = useRef(true)
 
@@ -79,41 +57,63 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
     return distribution
   }
 
-  // Load all observations for sections with retry
+  // OPTIMIZED: Bulk load all observations in one query instead of N+1
   const loadAllObservations = async (sectionsData) => {
-    const observationsMap = {}
-    const allObs = []
-    
-    for (const section of sectionsData) {
-      try {
-        // Use retry for each observation load
-        const observations = await retryOperation(
-          () => getObservations(section.id),
-          2, // 2 retries for observations
-          500 // 500ms initial delay
-        )
-        observationsMap[section.id] = observations || []
-        allObs.push(...(observations || []))
-      } catch (error) {
-        console.error(`Failed to load observations for section ${section.id} after retries:`, error)
-        observationsMap[section.id] = []
+    if (!sectionsData.length) return
+
+    try {
+      // Get all section IDs
+      const sectionIds = sectionsData.map(s => s.id)
+      
+      // PERFORMANCE: Load ALL observations in one query instead of looping
+      const { data: allObs, error } = await supabase
+        .from('observations')
+        .select('*')
+        .in('section_id', sectionIds)
+        .order('timestamp', { ascending: true })
+
+      if (error) throw error
+
+      if (mountedRef.current) {
+        // Group observations by section
+        const observationsMap = {}
+        sectionsData.forEach(section => {
+          observationsMap[section.id] = []
+        })
+
+        allObs.forEach(obs => {
+          if (observationsMap[obs.section_id]) {
+            observationsMap[obs.section_id].push(obs)
+          }
+        })
+
+        setSectionObservations(observationsMap)
+        setAllObservations(allObs || [])
       }
-    }
-    
-    if (mountedRef.current) {
-      setSectionObservations(observationsMap)
-      setAllObservations(allObs)
+    } catch (error) {
+      console.error('Failed to load observations:', error)
+      // Set empty observations instead of failing
+      if (mountedRef.current) {
+        const observationsMap = {}
+        sectionsData.forEach(section => {
+          observationsMap[section.id] = []
+        })
+        setSectionObservations(observationsMap)
+        setAllObservations([])
+      }
     }
   }
 
-  // Refresh section observations and update allObservations
+  // Refresh section observations 
   const refreshSectionObservations = async (sectionId) => {
     try {
-      const observations = await retryOperation(
-        () => getObservations(sectionId),
-        2,
-        500
-      )
+      const { data: observations, error } = await supabase
+        .from('observations')
+        .select('*')
+        .eq('section_id', sectionId)
+        .order('timestamp', { ascending: true })
+      
+      if (error) throw error
       
       if (mountedRef.current) {
         setSectionObservations(prev => ({
@@ -121,11 +121,9 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
           [sectionId]: observations || []
         }))
         
-        // Also update allObservations
+        // Update allObservations
         setAllObservations(prev => {
-          // Remove old observations from this section
           const filtered = prev.filter(obs => obs.section_id !== sectionId)
-          // Add new observations
           return [...filtered, ...(observations || [])]
         })
       }
@@ -230,11 +228,9 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
     ))
   }
 
-  // Main load function with retry logic
+  // OPTIMIZED: Main load function with parallel loading and minimal queries
   const loadProject = useCallback(async () => {
-    // Prevent duplicate loads
-    if (loadingRef.current || !projectId) {
-      console.log('Skipping load - already loading or no projectId')
+    if (loadingRef.current || !projectId || authLoading) {
       return
     }
 
@@ -243,85 +239,56 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
     setError('')
 
     try {
-      console.log('Starting project load with retry logic:', projectId)
+      console.log('🚀 Starting optimized project load:', projectId)
       
-      // Wait for auth with timeout
-      const user = await waitForAuth(10000)
-      
-      if (!mountedRef.current) return
-      
-      if (!user) {
-        // Try one more time to get the user
-        const { data: { user: retryUser } } = await supabase.auth.getUser()
-        if (!retryUser) {
-          setError('Please log in to view this project')
-          return
-        }
+      // SECURITY: Check company authorization for non-super admins
+      if (!isSuperAdmin && !company?.id) {
+        setError('Access denied: No company association found')
+        return
       }
+
+      // OPTIMIZATION: Single query to load project and sections together
+      let projectQuery = supabase
+        .from('projects')
+        .select(`
+          *,
+          companies!inner (
+            id,
+            name
+          ),
+          sections (*)
+        `)
+        .eq('id', projectId)
+
+      // Apply company filtering for non-super admins
+      if (!isSuperAdmin && company?.id) {
+        console.log('🔒 Applying company filter:', company.id)
+        projectQuery = projectQuery.eq('company_id', company.id)
+      }
+
+      // PERFORMANCE: Load project and sections in one query
+      const { data: projectData, error: projectError } = await projectQuery.single()
       
-      // Load project with retry
-      console.log('Loading project data...')
-      const projectData = await retryOperation(
-        async () => {
-          const { data, error } = await supabase
-            .from('projects')
-            .select('*')
-            .eq('id', projectId)
-            .single()
-          
-          if (error) throw error
-          if (!data) throw new Error('Project not found')
-          return data
-        },
-        3, // 3 retries
-        1000 // 1 second initial delay
-      )
-      
+      if (projectError) {
+        console.error('❌ Project query error:', projectError)
+        if (projectError.code === 'PGRST116') {
+          throw new Error('Project not found or access denied')
+        }
+        throw projectError
+      }
+
       if (!mountedRef.current) return
-      
+
+      console.log('✅ Project and sections loaded in single query')
+
+      // Extract sections from project data
+      const sectionsData = projectData.sections || []
+      delete projectData.sections // Remove sections from project object
+
       setProject(projectData)
-      
-      // Load sections with retry
-      console.log('Loading sections...')
-      const sectionsData = await retryOperation(
-        async () => {
-          const { data, error } = await supabase
-            .from('sections')
-            .select('*')
-            .eq('project_id', projectId)
-            .order('section_number', { ascending: true })
-          
-          if (error) {
-            // If it's an RLS error, wait a bit and retry
-            if (error.code === 'PGRST301' || error.message?.includes('policy')) {
-              console.log('RLS policy error, waiting before retry...')
-              await new Promise(resolve => setTimeout(resolve, 2000))
-              
-              // Retry the query
-              const retryResult = await supabase
-                .from('sections')
-                .select('*')
-                .eq('project_id', projectId)
-                .order('section_number', { ascending: true })
-              
-              if (retryResult.error) throw retryResult.error
-              return retryResult.data || []
-            }
-            throw error
-          }
-          
-          return data || []
-        },
-        3,
-        1500 // 1.5 seconds for sections
-      )
-      
-      if (!mountedRef.current) return
-      
-      setSections(sectionsData)
-      console.log('Sections loaded:', sectionsData.length)
-      
-      // Set first section with video as active, or first section if no videos
+      setSections(sectionsData.sort((a, b) => a.section_number - b.section_number))
+
+      // Set first section with video as active
       const firstSectionWithVideo = sectionsData.find(s => s.video_url)
       const firstSection = sectionsData[0]
       if (firstSectionWithVideo) {
@@ -329,31 +296,29 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
       } else if (firstSection) {
         setActiveSection(firstSection.id)
       }
-      
-      // Load observations for all sections (in background, don't block UI)
+
+      // OPTIMIZATION: Load observations in parallel, don't block UI
       if (sectionsData.length > 0) {
-        // Don't await this - let it run in background
+        // Don't await - let it load in background
         loadAllObservations(sectionsData).catch(err => {
-          console.error('Failed to load some observations:', err)
-          // Don't set error - observations are not critical for initial load
+          console.error('Background observation loading failed:', err)
         })
+      } else {
+        // No sections, set empty observations
+        setSectionObservations({})
+        setAllObservations([])
       }
-      
-      console.log('Project load complete')
+
+      console.log('✅ Optimized project load complete')
       
     } catch (err) {
-      console.error('Load error after retries:', err)
+      console.error('❌ Load error:', err)
       
       if (mountedRef.current) {
-        // Provide more specific error messages
-        if (err.message?.includes('not found')) {
-          setError('Project not found. It may have been deleted or you may not have permission to view it.')
-        } else if (err.message?.includes('policy') || err.code === 'PGRST301') {
-          setError('Permission denied. Please ensure you have access to this project.')
+        if (err.message?.includes('not found') || err.message?.includes('access denied')) {
+          setError('Project not found or you do not have permission to view it')
         } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
           setError('Network error. Please check your connection and try again.')
-        } else if (err.message?.includes('timeout')) {
-          setError('Request timed out. The server may be slow. Please try again.')
         } else {
           setError(err.message || 'Failed to load project. Please try again.')
         }
@@ -364,13 +329,13 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
         loadingRef.current = false
       }
     }
-  }, [projectId])
+  }, [projectId, authLoading, user, company, isSuperAdmin])
 
   // Load project data effect
   useEffect(() => {
     mountedRef.current = true
     
-    if (projectId) {
+    if (projectId && !authLoading) {
       loadProject()
     }
 
@@ -378,7 +343,7 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
       mountedRef.current = false
       loadingRef.current = false
     }
-  }, [projectId, retryTrigger, loadProject]) // Include retryTrigger to allow parent to force reload
+  }, [projectId, retryTrigger, loadProject])
 
   // Computed values
   const activeSectionData = sections.find(s => s.id === activeSection)

@@ -321,6 +321,9 @@ function HomePageContent() {
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false)
   const [archivedCount, setArchivedCount] = useState(0)
   
+  // DEBUG: Add state for diagnostic info
+  const [debugInfo, setDebugInfo] = useState({})
+  
   // Sorting and filtering state
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('created_at')
@@ -344,14 +347,36 @@ function HomePageContent() {
     } else if (!authLoading && hasLoadedProjects) {
       setLoading(false)
     }
-  }, [authLoading, user, hasLoadedProjects, isSuperAdmin])
+  }, [authLoading, user, hasLoadedProjects, isSuperAdmin, company])
 
   const loadProjects = async () => {
     if (!user) return
     
     setLoading(true)
+    
+    // DEBUG: Collect diagnostic information
+    const debug = {
+      user_id: user?.id,
+      profile_role: profile?.role,
+      profile_company_id: profile?.company_id,
+      company_object: company,
+      is_super_admin: isSuperAdmin,
+      timestamp: new Date().toISOString()
+    }
+    
+    console.log('=== DIAGNOSTIC INFO ===')
+    console.log('User ID:', debug.user_id)
+    console.log('Profile Role:', debug.profile_role)
+    console.log('Profile Company ID:', debug.profile_company_id)
+    console.log('Company Object:', debug.company_object)
+    console.log('Is Super Admin:', debug.is_super_admin)
+    console.log('========================')
+    
+    setDebugInfo(debug)
+    
     try {
-      const { data: projects, error } = await supabase
+      // Build the query based on user role and company
+      let query = supabase
         .from('projects')
         .select(`
           *,
@@ -364,29 +389,80 @@ function HomePageContent() {
               severity,
               code
             )
+          ),
+          companies (
+            id,
+            name
+          ),
+          profiles (
+            id,
+            full_name,
+            email
           )
         `)
         .neq('status', 'archived')
-        .order('created_at', { ascending: false })
+
+      // Apply company filtering based on user role
+      if (isSuperAdmin) {
+        // Super admins see ALL projects across all companies
+        console.log('🔧 QUERY: Loading ALL projects for super admin')
+      } else if (company?.id) {
+        // Company users (both admins and regular users) see only their company's projects
+        console.log('🔧 QUERY: Loading projects for company:', company.name, 'ID:', company.id)
+        query = query.eq('company_id', company.id)
+      } else {
+        // User has no company - shouldn't happen but handle gracefully
+        console.warn('❌ QUERY: User has no company, loading no projects')
+        console.log('Profile company_id:', profile?.company_id)
+        console.log('Company object:', company)
+        setAllProjects([])
+        setFilteredProjects([])
+        setHasLoadedProjects(true)
+        setLoading(false)
+        return
+      }
+
+      const { data: projects, error } = await query.order('created_at', { ascending: false })
       
       if (error) {
-        console.error('Error loading projects:', error)
+        console.error('❌ Database error loading projects:', error)
+        setDebugInfo(prev => ({ ...prev, query_error: error }))
       } else {
+        console.log(`✅ Successfully loaded ${projects?.length || 0} projects`)
+        
+        // DEBUG: Log first few projects to see their company_id values
+        if (projects && projects.length > 0) {
+          console.log('📋 Sample projects:')
+          projects.slice(0, 3).forEach((project, index) => {
+            console.log(`  ${index + 1}. ${project.name} (company_id: ${project.company_id})`)
+          })
+        }
+        
         setAllProjects(projects || [])
         setFilteredProjects(projects || [])
         setHasLoadedProjects(true)
+        setDebugInfo(prev => ({ ...prev, projects_loaded: projects?.length || 0 }))
       }
 
-      const { count: archiveCount } = await supabase
+      // Load archived count with same company filtering
+      let archiveQuery = supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'archived')
 
+      if (!isSuperAdmin && company?.id) {
+        archiveQuery = archiveQuery.eq('company_id', company.id)
+      }
+
+      const { count: archiveCount } = await archiveQuery
+
       if (archiveCount !== null) {
         setArchivedCount(archiveCount)
+        setDebugInfo(prev => ({ ...prev, archived_count: archiveCount }))
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('❌ Unexpected error:', error)
+      setDebugInfo(prev => ({ ...prev, unexpected_error: error.message }))
     } finally {
       setLoading(false)
     }
@@ -558,15 +634,43 @@ function HomePageContent() {
 
   return (
     <div>
+      {/* DEBUG: Show diagnostic information when no projects are found */}
+      {Object.keys(debugInfo).length > 0 && filteredProjects.length === 0 && (
+        <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-lg font-medium text-yellow-800 mb-2">🔍 Diagnostic Information</h3>
+          <div className="text-sm text-yellow-700 space-y-1">
+            <div><strong>User ID:</strong> {debugInfo.user_id}</div>
+            <div><strong>Profile Role:</strong> {debugInfo.profile_role}</div>
+            <div><strong>Profile Company ID:</strong> {debugInfo.profile_company_id}</div>
+            <div><strong>Company Object:</strong> {debugInfo.company_object ? JSON.stringify(debugInfo.company_object) : 'null'}</div>
+            <div><strong>Is Super Admin:</strong> {debugInfo.is_super_admin ? 'Yes' : 'No'}</div>
+            <div><strong>Projects Loaded:</strong> {debugInfo.projects_loaded}</div>
+            <div><strong>Archived Count:</strong> {debugInfo.archived_count}</div>
+            {debugInfo.query_error && (
+              <div><strong>Query Error:</strong> {JSON.stringify(debugInfo.query_error)}</div>
+            )}
+            {debugInfo.unexpected_error && (
+              <div><strong>Unexpected Error:</strong> {debugInfo.unexpected_error}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header with Company Info */}
       <div className="flex justify-between items-start mb-8">
         <div className="flex-1">
           <div className="flex items-center mb-2">
-            <h1 className="text-3xl font-bold text-gray-900 mr-4">Your Projects</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mr-4">
+              {isSuperAdmin ? 'All Projects' : 'Company Projects'}
+            </h1>
           </div>
           <div className="flex items-center gap-4">
             <p className="text-gray-600">
-              Manage your inspection projects ({filteredProjects.length} of {allProjects.length} active shown)
+              {isSuperAdmin ? (
+                `System-wide project overview (${filteredProjects.length} of ${allProjects.length} shown)`
+              ) : (
+                `Manage your company's inspection projects (${filteredProjects.length} of ${allProjects.length} active shown)`
+              )}
               {archivedCount > 0 && (
                 <span className="ml-2 text-sm">
                   • <Link href="/projects/archived" className="text-blue-600 hover:underline">
@@ -576,7 +680,8 @@ function HomePageContent() {
               )}
             </p>
             {company?.name && (
-              <span className="text-sm text-blue-600 font-medium">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                <Building className="w-3 h-3 mr-1" />
                 {company.name}
               </span>
             )}
@@ -686,6 +791,21 @@ function HomePageContent() {
                         <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${statusConfig.dot}`}></div>
                         {statusConfig.label}
                       </div>
+                      {/* Show company name for super admins */}
+                      {isSuperAdmin && project.companies?.name && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                            <Building className="w-3 h-3 mr-1" />
+                            {project.companies.name}
+                          </span>
+                        </div>
+                      )}
+                      {/* Show creator for company context */}
+                      {project.profiles?.full_name && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          Created by {project.profiles.full_name}
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex gap-1 ml-2">
@@ -789,19 +909,26 @@ function HomePageContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {isSuperAdmin ? 'No projects in system' : 'No company projects yet'}
+                </h3>
                 <p className="text-gray-500 mb-6">
-                  Get started by creating your first inspection project.
+                  {isSuperAdmin 
+                    ? 'No projects have been created by any company yet.'
+                    : 'Get started by creating your first inspection project.'
+                  }
                 </p>
-                <Link 
-                  href="/projects/new"
-                  className="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium transition-colors"
-                >
-                  <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Create Your First Project
-                </Link>
+                {!isSuperAdmin && (
+                  <Link 
+                    href="/projects/new"
+                    className="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium transition-colors"
+                  >
+                    <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Create Your First Project
+                  </Link>
+                )}
               </>
             ) : (
               <>

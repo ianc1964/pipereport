@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { AlertCircle, CheckCircle, Mail, CreditCard, Calendar, Shield, AlertTriangle } from 'lucide-react'
+import { AlertCircle, CheckCircle, Mail, CreditCard, Calendar, Shield, AlertTriangle, User } from 'lucide-react'
 import { trackLogin } from '@/lib/actions/ip-tracking'
 import SimpleDeviceFingerprint from '@/lib/device-fingerprint-simple'
 import { checkFingerprintForTrial, recordFingerprint } from '@/lib/actions/fingerprint-tracking'
@@ -21,6 +21,8 @@ export default function SignUpPage() {
   const [fingerprintData, setFingerprintData] = useState(null)
   const [fingerprintWarning, setFingerprintWarning] = useState(null)
   const [checkingDevice, setCheckingDevice] = useState(true)
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false)
+  const [emailExists, setEmailExists] = useState(null)
   
   const [formData, setFormData] = useState({
     email: '',
@@ -56,6 +58,67 @@ export default function SignUpPage() {
     }
   }, [])
 
+  // Check email uniqueness when email changes
+  useEffect(() => {
+    const checkEmailExists = async () => {
+      if (!formData.email || formData.email.length < 5) {
+        setEmailExists(null)
+        return
+      }
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.email)) {
+        setEmailExists(null)
+        return
+      }
+
+      setEmailCheckLoading(true)
+      try {
+        // Check if email exists in profiles table
+        const { data: existingProfiles, error } = await supabase
+          .from('profiles')
+          .select(`
+            id, 
+            email, 
+            full_name,
+            companies (
+              id,
+              name
+            )
+          `)
+          .eq('email', formData.email.toLowerCase().trim())
+
+        if (error) {
+          console.error('Email check error:', error)
+          setEmailExists(null)
+          return
+        }
+
+        if (existingProfiles && existingProfiles.length > 0) {
+          setEmailExists({
+            exists: true,
+            profiles: existingProfiles
+          })
+        } else {
+          setEmailExists({
+            exists: false,
+            profiles: []
+          })
+        }
+      } catch (error) {
+        console.error('Email validation error:', error)
+        setEmailExists(null)
+      } finally {
+        setEmailCheckLoading(false)
+      }
+    }
+
+    // Debounce email checking
+    const timeoutId = setTimeout(checkEmailExists, 500)
+    return () => clearTimeout(timeoutId)
+  }, [formData.email])
+
   async function loadTrialPlan() {
     try {
       const { data, error } = await supabase
@@ -80,8 +143,7 @@ export default function SignUpPage() {
       setCheckingDevice(true)
       console.log('Starting device fingerprint generation...')
       
-      // Use the correct DeviceFingerprint class
-      const fingerprinter = new SimpleDeviceFingerprint() // FIXED: Use correct class name
+      const fingerprinter = new SimpleDeviceFingerprint()
       const fingerprint = await fingerprinter.generate()
       
       console.log('Device fingerprint generated successfully!')
@@ -170,6 +232,40 @@ export default function SignUpPage() {
       return
     }
 
+    // Check if email already exists
+    if (emailExists && emailExists.exists) {
+      const existingProfile = emailExists.profiles[0]
+      const companyName = existingProfile.companies?.name || 'Unknown Company'
+      
+      setError(
+        <div>
+          <p className="font-semibold mb-2">Email Address Already Registered</p>
+          <p className="text-sm mb-3">
+            The email address <strong>{formData.email}</strong> is already associated with an existing account.
+          </p>
+          <div className="mt-3 p-3 bg-blue-50 rounded">
+            <p className="text-xs font-semibold mb-1">Existing Account Details:</p>
+            <p className="text-sm">
+              <User className="w-4 h-4 inline mr-1" />
+              <strong>{existingProfile.full_name || 'User'}</strong>
+            </p>
+            <p className="text-sm">
+              Company: <strong>{companyName}</strong>
+            </p>
+          </div>
+          <div className="mt-4 space-y-2">
+            <p className="text-sm">
+              Please <Link href="/auth/login" className="text-blue-600 underline font-medium">log in</Link> to your existing account instead.
+            </p>
+            <p className="text-xs text-gray-500">
+              If you've forgotten your password, use the "Forgot Password" link on the login page.
+            </p>
+          </div>
+        </div>
+      )
+      return
+    }
+
     // Check if device fingerprint blocks signup
     if (fingerprintWarning && !fingerprintWarning.canProceed) {
       setError(
@@ -205,9 +301,19 @@ export default function SignUpPage() {
     try {
       console.log('Starting signup process...')
       
+      // Final email check before proceeding
+      const { data: finalEmailCheck } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', formData.email.toLowerCase().trim())
+      
+      if (finalEmailCheck && finalEmailCheck.length > 0) {
+        throw new Error('Email address is already registered. Please log in instead.')
+      }
+      
       // 1. Sign up user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
+        email: formData.email.toLowerCase().trim(),
         password: formData.password,
         options: {
           data: {
@@ -236,7 +342,7 @@ export default function SignUpPage() {
       const { error: profileUpdateError } = await supabase
         .from('profiles')
         .update({
-          email: user.email || formData.email,
+          email: user.email || formData.email.toLowerCase().trim(),
           full_name: formData.fullName,
           is_active: true
         })
@@ -253,7 +359,7 @@ export default function SignUpPage() {
         const { data: companyData, error: companyError } = await supabase
           .rpc('create_company_with_trial', {
             company_name: formData.companyName.trim(),
-            company_email: formData.email
+            company_email: formData.email.toLowerCase().trim()
           })
         
         if (companyError) {
@@ -345,7 +451,7 @@ export default function SignUpPage() {
     } catch (error) {
       console.error('Signup error:', error)
       
-      if (error.message?.includes('already registered')) {
+      if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
         setError('This email is already registered. Please log in instead.')
       } else {
         setError(error.message || 'An error occurred during signup')
@@ -361,7 +467,7 @@ export default function SignUpPage() {
     return `${months} months`
   }
 
-  const isSignupDisabled = loading || checkingDevice || (fingerprintWarning && !fingerprintWarning.canProceed)
+  const isSignupDisabled = loading || checkingDevice || (fingerprintWarning && !fingerprintWarning.canProceed) || (emailExists && emailExists.exists)
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -533,15 +639,43 @@ export default function SignUpPage() {
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                     Email Address
                   </label>
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    disabled={isSignupDisabled}
-                  />
+                  <div className="relative">
+                    <input
+                      id="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                        emailExists && emailExists.exists 
+                          ? 'border-red-300 bg-red-50' 
+                          : 'border-gray-300'
+                      }`}
+                      disabled={isSignupDisabled}
+                    />
+                    {emailCheckLoading && (
+                      <div className="absolute right-3 top-3">
+                        <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Email validation feedback */}
+                  {emailExists && !emailCheckLoading && (
+                    <div className="mt-2">
+                      {emailExists.exists ? (
+                        <div className="flex items-center text-red-600 text-sm">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          <span>This email is already registered</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-green-600 text-sm">
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          <span>Email is available</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
