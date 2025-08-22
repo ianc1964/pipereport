@@ -20,7 +20,8 @@ import {
   Package,
   Fingerprint,
   AlertTriangle,
-  Loader2
+  Loader2,
+  MessageCircle
 } from 'lucide-react'
 
 export default function AdminDashboard() {
@@ -135,6 +136,14 @@ export default function AdminDashboard() {
       href: '/admin/companies',
       icon: Building2,
       color: 'bg-blue-500',
+      implemented: true
+    },
+    {
+      title: 'Support Tickets',
+      description: 'Manage support tickets from all companies',
+      href: '/admin/support',
+      icon: MessageCircle,
+      color: 'bg-orange-500',
       implemented: true
     },
     {

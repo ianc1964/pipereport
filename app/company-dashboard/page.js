@@ -13,7 +13,8 @@ import {
   Home,
   Archive,
   RefreshCw,
-  Palette
+  Palette,
+  MessageCircle
 } from 'lucide-react'
 import HelpIcon from '@/components/help/HelpIcon'
 
@@ -88,6 +89,30 @@ export default function CompanyDashboard() {
                   "Company admins can manage all settings",
                   "Regular users can create and edit projects",
                   "Remove access when team members leave"
+                ]}
+                size="sm"
+              />
+            </div>
+          </div>
+
+          <div className="relative">
+            <Link href="/company-dashboard/support" className="block">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                <MessageCircle className="h-8 w-8 text-orange-500 mb-3" />
+                <h3 className="font-semibold text-gray-900">Support Tickets</h3>
+                <p className="text-sm text-gray-600 mt-1">Get help from our support team</p>
+              </div>
+            </Link>
+            <div className="absolute top-2 right-2">
+              <HelpIcon
+                title="Support System"
+                content="Direct communication with our support team."
+                bullets={[
+                  "Create support tickets for any issues",
+                  "Real-time chat with support agents",
+                  "Track ticket status and history",
+                  "Attach files and screenshots",
+                  "Get priority support for urgent issues"
                 ]}
                 size="sm"
               />
