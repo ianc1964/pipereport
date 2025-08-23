@@ -138,68 +138,59 @@ export default function SignUpPage() {
     }
   }
 
- // Replace your current generateFingerprint function with this version:
+  async function generateFingerprint() {
+    try {
+      setCheckingDevice(true)
+      console.log('Starting device fingerprint generation...')
+      
+      const fingerprinter = new SimpleDeviceFingerprint()
+      const fingerprint = await fingerprinter.generate()
+      
+      console.log('Device fingerprint generated successfully!')
+      console.log('Fingerprint hash:', fingerprint.hash)
+      console.log('Confidence score:', fingerprint.confidence)
+      
+      setFingerprintData(fingerprint)
 
- async function generateFingerprint() {
-   try {
-     setCheckingDevice(true)
-     console.log('Starting device fingerprint generation...')
-     
-     const fingerprinter = new SimpleDeviceFingerprint()
-     const fingerprint = await fingerprinter.generate()
-     
-     console.log('Device fingerprint generated successfully!')
-     console.log('Fingerprint hash:', fingerprint.hash)
-     console.log('Confidence score:', fingerprint.confidence)
-     
-     setFingerprintData(fingerprint)
-
-     // 🧪 TESTING BYPASS: Skip fingerprint checks in testing mode
-     if (process.env.NEXT_PUBLIC_TESTING_MODE === 'true') {
-       console.log('🧪 TESTING MODE: Fingerprint checks disabled')
-       setFingerprintWarning(null)
-       return
-     }
-
-     // Check if this device has been used for a trial before
-     try {
-       const fingerprintCheck = await checkFingerprintForTrial(fingerprint.hash)
-       console.log('Fingerprint check result:', fingerprintCheck)
-       
-       if (fingerprintCheck.success) {
-         if (fingerprintCheck.isBlocked) {
-           setFingerprintWarning({
-             type: 'blocked',
-             message: 'This device has been blocked from creating new trial accounts.',
-             canProceed: false
-           })
-         } else if (fingerprintCheck.trialCount > 0) {
-           setFingerprintWarning({
-             type: 'warning',
-             message: 'A trial account has already been created from this device.',
-             canProceed: false,
-             existingCompanies: fingerprintCheck.existingCompanies || []
-           })
-         } else {
-           console.log('Device fingerprint is clean - no existing trials')
-         }
-       }
-     } catch (checkError) {
-       console.error('Error checking fingerprint:', checkError)
-       // Don't block signup if check fails
-     }
-   } catch (error) {
-     console.error('Error generating fingerprint:', error)
-     // Don't block signup if fingerprinting fails completely
-     setFingerprintData({ 
-       hash: 'fallback-' + Date.now(), 
-       components: {}, 
-       confidence: 0 
-     })
-   } finally {
-     setCheckingDevice(false)
-   }
- }
+      // Check if this device has been used for a trial before
+      try {
+        const fingerprintCheck = await checkFingerprintForTrial(fingerprint.hash)
+        console.log('Fingerprint check result:', fingerprintCheck)
+        
+        if (fingerprintCheck.success) {
+          if (fingerprintCheck.isBlocked) {
+            setFingerprintWarning({
+              type: 'blocked',
+              message: 'This device has been blocked from creating new trial accounts.',
+              canProceed: false
+            })
+          } else if (fingerprintCheck.trialCount > 0) {
+            setFingerprintWarning({
+              type: 'warning',
+              message: 'A trial account has already been created from this device.',
+              canProceed: false,
+              existingCompanies: fingerprintCheck.existingCompanies || []
+            })
+          } else {
+            console.log('Device fingerprint is clean - no existing trials')
+          }
+        }
+      } catch (checkError) {
+        console.error('Error checking fingerprint:', checkError)
+        // Don't block signup if check fails
+      }
+    } catch (error) {
+      console.error('Error generating fingerprint:', error)
+      // Don't block signup if fingerprinting fails completely
+      setFingerprintData({ 
+        hash: 'fallback-' + Date.now(), 
+        components: {}, 
+        confidence: 0 
+      })
+    } finally {
+      setCheckingDevice(false)
+    }
+  }
 
   async function handleResendConfirmation(e) {
     e.preventDefault()

@@ -321,6 +321,9 @@ function HomePageContent() {
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false)
   const [archivedCount, setArchivedCount] = useState(0)
   
+  // DEBUG: Add state for diagnostic info
+  const [debugInfo, setDebugInfo] = useState({})
+  
   // Sorting and filtering state
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('created_at')
@@ -350,6 +353,26 @@ function HomePageContent() {
     if (!user) return
     
     setLoading(true)
+    
+    // DEBUG: Collect diagnostic information
+    const debug = {
+      user_id: user?.id,
+      profile_role: profile?.role,
+      profile_company_id: profile?.company_id,
+      company_object: company,
+      is_super_admin: isSuperAdmin,
+      timestamp: new Date().toISOString()
+    }
+    
+    console.log('=== DIAGNOSTIC INFO ===')
+    console.log('User ID:', debug.user_id)
+    console.log('Profile Role:', debug.profile_role)
+    console.log('Profile Company ID:', debug.profile_company_id)
+    console.log('Company Object:', debug.company_object)
+    console.log('Is Super Admin:', debug.is_super_admin)
+    console.log('========================')
+    
+    setDebugInfo(debug)
     
     try {
       // Build the query based on user role and company
@@ -382,11 +405,16 @@ function HomePageContent() {
       // Apply company filtering based on user role
       if (isSuperAdmin) {
         // Super admins see ALL projects across all companies
+        console.log('🔧 QUERY: Loading ALL projects for super admin')
       } else if (company?.id) {
-        // Company users see only their company's projects
+        // Company users (both admins and regular users) see only their company's projects
+        console.log('🔧 QUERY: Loading projects for company:', company.name, 'ID:', company.id)
         query = query.eq('company_id', company.id)
       } else {
-        // User has no company - handle gracefully
+        // User has no company - shouldn't happen but handle gracefully
+        console.warn('❌ QUERY: User has no company, loading no projects')
+        console.log('Profile company_id:', profile?.company_id)
+        console.log('Company object:', company)
         setAllProjects([])
         setFilteredProjects([])
         setHasLoadedProjects(true)
@@ -397,11 +425,23 @@ function HomePageContent() {
       const { data: projects, error } = await query.order('created_at', { ascending: false })
       
       if (error) {
-        console.error('Database error loading projects:', error)
+        console.error('❌ Database error loading projects:', error)
+        setDebugInfo(prev => ({ ...prev, query_error: error }))
       } else {
+        console.log(`✅ Successfully loaded ${projects?.length || 0} projects`)
+        
+        // DEBUG: Log first few projects to see their company_id values
+        if (projects && projects.length > 0) {
+          console.log('📋 Sample projects:')
+          projects.slice(0, 3).forEach((project, index) => {
+            console.log(`  ${index + 1}. ${project.name} (company_id: ${project.company_id})`)
+          })
+        }
+        
         setAllProjects(projects || [])
         setFilteredProjects(projects || [])
         setHasLoadedProjects(true)
+        setDebugInfo(prev => ({ ...prev, projects_loaded: projects?.length || 0 }))
       }
 
       // Load archived count with same company filtering
@@ -418,9 +458,11 @@ function HomePageContent() {
 
       if (archiveCount !== null) {
         setArchivedCount(archiveCount)
+        setDebugInfo(prev => ({ ...prev, archived_count: archiveCount }))
       }
     } catch (error) {
-      console.error('Unexpected error:', error)
+      console.error('❌ Unexpected error:', error)
+      setDebugInfo(prev => ({ ...prev, unexpected_error: error.message }))
     } finally {
       setLoading(false)
     }
@@ -592,6 +634,28 @@ function HomePageContent() {
 
   return (
     <div>
+      {/* DEBUG: Show diagnostic information when no projects are found */}
+      {Object.keys(debugInfo).length > 0 && filteredProjects.length === 0 && (
+        <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-lg font-medium text-yellow-800 mb-2">🔍 Diagnostic Information</h3>
+          <div className="text-sm text-yellow-700 space-y-1">
+            <div><strong>User ID:</strong> {debugInfo.user_id}</div>
+            <div><strong>Profile Role:</strong> {debugInfo.profile_role}</div>
+            <div><strong>Profile Company ID:</strong> {debugInfo.profile_company_id}</div>
+            <div><strong>Company Object:</strong> {debugInfo.company_object ? JSON.stringify(debugInfo.company_object) : 'null'}</div>
+            <div><strong>Is Super Admin:</strong> {debugInfo.is_super_admin ? 'Yes' : 'No'}</div>
+            <div><strong>Projects Loaded:</strong> {debugInfo.projects_loaded}</div>
+            <div><strong>Archived Count:</strong> {debugInfo.archived_count}</div>
+            {debugInfo.query_error && (
+              <div><strong>Query Error:</strong> {JSON.stringify(debugInfo.query_error)}</div>
+            )}
+            {debugInfo.unexpected_error && (
+              <div><strong>Unexpected Error:</strong> {debugInfo.unexpected_error}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header with Company Info */}
       <div className="flex justify-between items-start mb-8">
         <div className="flex-1">
