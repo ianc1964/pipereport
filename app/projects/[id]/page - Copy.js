@@ -74,7 +74,7 @@ export default function ProjectDetailPage() {
     deletingSectionId, getSeverityDistribution, refreshSectionObservations,
     addSection, updateSection, removeSection, updateSectionVideo, removeSectionVideo,
     setActiveSection, setUploadingSectionId, setDeletingVideoId, setDeletingSectionId,
-    sectionObservationCount, videoObservations, totalObservations, totalVideos, highSeverityCount, projectLoaded, observationsLoaded
+    sectionObservationCount, videoObservations, totalObservations, totalVideos, highSeverityCount
   } = projectData
 
   const {
@@ -408,32 +408,22 @@ export default function ProjectDetailPage() {
     })
   }
 
-  // Enhanced loading state with progressive loading
-if (authLoading) {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <div className="text-lg text-gray-600">Checking authentication...</div>
-      </div>
-    </div>
-  )
-}
-
-// Show project loading with progressive states
-if (loading && !projectLoaded) {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <div className="text-lg text-gray-600">Loading project...</div>
-        <div className="text-sm text-gray-500 mt-2">
-          Fetching project data and sections
+  // Enhanced loading state
+  if (authLoading || (loading && !project)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-lg text-gray-600">
+            {authLoading ? 'Checking authentication...' : 'Loading project...'}
+          </div>
+          <div className="text-sm text-gray-500 mt-2">
+            This may take a moment
+          </div>
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
   // Enhanced error state with retry
   if (error && !isRetrying) {
@@ -928,67 +918,41 @@ if (loading && !projectLoaded) {
         </div>
       )}
 
-      {/* Project Summary with Progressive Loading */}
-<div className="mt-6 bg-white border border-gray-200 rounded-lg p-4">
-  <div className="flex items-center gap-2 mb-4">
-    <h3 className="text-lg font-medium text-gray-900">Project Summary</h3>
-    {!observationsLoaded && (
-      <div className="flex items-center gap-1 text-xs text-blue-600">
-        <div className="w-3 h-3 animate-spin border-2 border-blue-600 border-t-transparent rounded-full"></div>
-        Loading observations...
+      {/* Project Summary with Help */}
+      <div className="mt-6 bg-white border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Project Summary</h3>
+          <HelpIcon
+            title="Project Statistics"
+            content="Overview of your inspection progress."
+            bullets={[
+              "Sections: Total pipe segments inspected",
+              "Videos: Number of uploaded videos",
+              "Observations: Total defects documented",
+              "High Severity: Critical issues needing attention"
+            ]}
+            size="sm"
+          />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div>
+            <div className="text-2xl font-semibold text-gray-900">{sections.length}</div>
+            <div className="text-sm text-gray-500">Sections</div>
+          </div>
+          <div>
+            <div className="text-2xl font-semibold text-gray-900">{totalVideos}</div>
+            <div className="text-sm text-gray-500">Videos</div>
+          </div>
+          <div>
+            <div className="text-2xl font-semibold text-gray-900">{totalObservations}</div>
+            <div className="text-sm text-gray-500">Observations</div>
+          </div>
+          <div>
+            <div className="text-2xl font-semibold text-red-600">{highSeverityCount}</div>
+            <div className="text-sm text-gray-500">High Severity</div>
+          </div>
+        </div>
       </div>
-    )}
-    <HelpIcon
-      title="Project Statistics"
-      content="Overview of your inspection progress."
-      bullets={[
-        "Sections: Total pipe segments inspected",
-        "Videos: Number of uploaded videos",
-        "Observations: Total defects documented",
-        "High Severity: Critical issues needing attention"
-      ]}
-      size="sm"
-    />
-  </div>
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-    <div>
-      <div className="text-2xl font-semibold text-gray-900">{sections.length}</div>
-      <div className="text-sm text-gray-500">Sections</div>
-    </div>
-    <div>
-      <div className="text-2xl font-semibold text-gray-900">{totalVideos}</div>
-      <div className="text-sm text-gray-500">Videos</div>
-    </div>
-    <div>
-      <div className="text-2xl font-semibold text-gray-900">
-        {observationsLoaded ? totalObservations : (
-          <div className="w-6 h-6 animate-pulse bg-gray-300 rounded mx-auto"></div>
-        )}
-      </div>
-      <div className="text-sm text-gray-500">Observations</div>
-    </div>
-    <div>
-      <div className="text-2xl font-semibold text-red-600">
-        {observationsLoaded ? highSeverityCount : (
-          <div className="w-6 h-6 animate-pulse bg-gray-300 rounded mx-auto"></div>
-        )}
-      </div>
-      <div className="text-sm text-gray-500">High Severity</div>
-    </div>
-  </div>
-  
-  {/* Show data freshness indicator */}
-  <div className="mt-3 pt-3 border-t border-gray-100">
-    <div className="flex items-center justify-between text-xs text-gray-500">
-      <span>
-        Project: {projectLoaded ? '✅ Loaded' : '⏳ Loading...'}
-      </span>
-      <span>
-        Observations: {observationsLoaded ? '✅ Loaded' : '⏳ Loading...'}
-      </span>
-    </div>
-  </div>
-</div>
 
       {/* Video Source Selection Modal */}
       {uploadingSectionId && (
