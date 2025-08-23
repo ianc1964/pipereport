@@ -65,10 +65,9 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
     )
 
     if (authChanged) {
-      console.log('🔐 Auth values changed:', { 
+      console.log('🔒 Auth values changed:', { 
         old: stableAuthRef.current, 
         new: newAuth,
-        hasProject: !!project,
         hasValidData: dataValidRef.current
       })
       
@@ -94,7 +93,7 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
         authChangeInProgressRef.current = false
       }
     }
-  }, [user?.id, company?.id, isSuperAdmin, projectId, project])
+  }, [user?.id, company?.id, isSuperAdmin, projectId]) // 🔧 REMOVED: project dependency
 
   // Handle tab switching - prevent unnecessary reloads
   useTabVisibility(
@@ -126,7 +125,7 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
     },
     () => {
       // User left tab - nothing to do
-      console.log('🔄 User left tab, activeSection:', activeSection)
+      console.log('📱 User left tab, activeSection:', activeSection)
     }
   )
 
@@ -207,6 +206,16 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
 
       console.log(`⚡ Project and sections loaded in ${Date.now() - startTime}ms`)
 
+      // 🔧 ENHANCED: Handle empty projects (no sections) gracefully
+      if (sectionsData.length === 0) {
+        console.log('📝 New project with no sections - setting activeSection to null')
+        setActiveSection(null)
+        setSectionObservations({})
+        setAllObservations([])
+        setObservationsLoaded(true)
+        return true // Early return for empty projects
+      }
+
       // ENHANCED: Smart active section handling with persistence and protection
       setActiveSection(currentActiveSection => {
         console.log('🎯 Setting active section:', {
@@ -248,18 +257,9 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
       })
 
       // OPTIMIZATION 4: Load observations asynchronously if we have sections
-      // FIX: Use video_timestamp instead of timestamp
-      if (sectionsData.length > 0) {
-        // Start observations loading but don't await it
-        loadObservationsAsync(sectionsData).then(() => {
-          console.log(`📊 All data loaded in ${Date.now() - startTime}ms`)
-        })
-      } else {
-        // No sections, set empty observations immediately
-        setSectionObservations({})
-        setAllObservations([])
-        setObservationsLoaded(true)
-      }
+      loadObservationsAsync(sectionsData).then(() => {
+        console.log(`📊 All data loaded in ${Date.now() - startTime}ms`)
+      })
 
       return true // Success
       
@@ -445,7 +445,7 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
     ))
   }
 
-  // OPTIMIZED: Main load function with error handling
+  // 🔧 OPTIMIZED: Main load function with STABLE dependencies
   const loadProject = useCallback(async (forceReload = false) => {
     if (loadingRef.current || !projectId || authLoading) {
       return
@@ -467,7 +467,7 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
     }
 
     // Skip reload if data is fresh and not forced
-    if (!forceReload && dataValidRef.current && project && sections.length > 0) {
+    if (!forceReload && dataValidRef.current) {
       const timeSinceLastLoad = Date.now() - lastLoadTimeRef.current
       if (timeSinceLastLoad < 30000) { // 30 seconds
         console.log('⚡ Skipping reload - data is fresh')
@@ -502,9 +502,9 @@ export const useProjectData = (projectId, retryTrigger = 0) => {
         loadingRef.current = false
       }
     }
-  }, [projectId, authLoading, project, sections.length]) // Removed user/auth dependencies
+  }, [projectId, authLoading]) // 🔧 REMOVED: project, sections.length dependencies
 
-  // STABLE: Initial load effect - only triggers on essential changes
+  // 🔧 STABLE: Initial load effect - only triggers on essential changes  
   useEffect(() => {
     mountedRef.current = true
     
